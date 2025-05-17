@@ -31,17 +31,26 @@ export async function searchBusinessesAction(
 
   const query = `${category} in ${location}`;
   const radiusInMeters = radius * 1609.34; // Convert miles to meters
+  
+  // Explicitly request the fields we need to ensure they are returned.
+  const fieldsToRequest = [
+    "place_id",
+    "name",
+    "formatted_address",
+    "international_phone_number",
+    "website",
+    "rating",
+    "user_ratings_total"
+  ].join(",");
 
-  // Text Search biases results by radius but might include prominent results outside it.
-  // The fields requested are generally returned by default in recent versions of the Text Search API.
-  const apiUrl = `${PLACES_API_BASE_URL}?query=${encodeURIComponent(query)}&radius=${radiusInMeters}&key=${GOOGLE_PLACES_API_KEY}`;
+  const apiUrl = `${PLACES_API_BASE_URL}?query=${encodeURIComponent(query)}&radius=${radiusInMeters}&fields=${encodeURIComponent(fieldsToRequest)}&key=${GOOGLE_PLACES_API_KEY}`;
 
   try {
     const response = await fetch(apiUrl);
     const data = await response.json();
 
     if (!response.ok || (data.status !== "OK" && data.status !== "ZERO_RESULTS")) {
-      console.error("Google Places API Error:", data.status, data.error_message);
+      console.error("Google Places API Error:", data.status, data.error_message, data.info_messages);
       throw new Error(data.error_message || `Failed to fetch data from Google Places API. Status: ${data.status}`);
     }
 
@@ -53,8 +62,8 @@ export async function searchBusinessesAction(
       id: place.place_id,
       name: place.name,
       address: place.formatted_address,
-      phoneNumber: place.international_phone_number, // May not always be present
-      website: place.website, // May not always be present
+      phoneNumber: place.international_phone_number,
+      website: place.website,
       rating: place.rating,
       reviewsCount: place.user_ratings_total,
     }));
@@ -67,3 +76,4 @@ export async function searchBusinessesAction(
     throw new Error("An unknown error occurred while searching for businesses.");
   }
 }
+
