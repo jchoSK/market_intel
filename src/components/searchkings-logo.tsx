@@ -4,23 +4,23 @@ import type { SVGProps } from 'react';
 export function SearchKingsLogo(props: SVGProps<SVGSVGElement>) {
   return (
     <svg
-      viewBox="0 0 60 40" // Adjusted viewBox for the new design
+      viewBox="0 0 56 30" // Adjusted viewBox for the new flatter aspect ratio
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
       aria-label="SearchKings Crown Logo"
       {...props} // width and height will be controlled by CSS via className
     >
       <title>SearchKings Crown</title>
-      {/* Gold crown body */}
+      {/* Gold crown body, adjusted for flatter appearance */}
       <path
-        d="M30,2 L20,20 L8,12 L2,25 C10,35 50,35 58,25 L52,12 L40,20 Z"
+        d="M28,0 L18,16.18 L6,9.99 L0,20.67 C8,29.67 48,29.67 56,20.67 L50,9.99 L38,16.18 Z"
         fill="#FFA300" // SK Gold
       />
-      {/* Dark accent line on the base */}
+      {/* Dark accent line on the base, adjusted for flatter appearance */}
       <path
-        d="M2,25 Q11,18 20,20 T40,20 Q49,18 58,25"
+        d="M0,20.67 Q9,14.38 18,16.18 T38,16.18 Q47,14.38 56,20.67"
         stroke="#000000" // SK Black
-        strokeWidth="1.5"
+        strokeWidth="1.5" // Kept stroke width, consider adjusting if it looks too thick/thin
         fill="none"
       />
     </svg>
