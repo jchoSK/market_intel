@@ -14,8 +14,10 @@ const GOOGLE_PLACES_API_KEY = process.env.GOOGLE_PLACES_API_KEY;
 
 // Classic Text Search API for discovery
 const TEXT_SEARCH_API_URL = "https://maps.googleapis.com/maps/api/place/textsearch/json";
-// Place Details (New) API for fetching specific fields like website and phone
-const PLACE_DETAILS_NEW_API_URL_BASE = "https://places.googleapis.com/v1/places"; // No /json here
+// Place Details (New) API base URL for fetching specific fields.
+// Documentation specifies endpoint as: GET https://places.googleapis.com/v1/{name=places/*}
+// which translates to https://places.googleapis.com/v1/places/{placeId}
+const PLACE_DETAILS_NEW_API_URL_BASE = "https://places.googleapis.com/v1/places";
 
 export async function searchBusinessesAction(
   params: { category: string; location: string; radius: number }
@@ -37,6 +39,8 @@ export async function searchBusinessesAction(
   const radiusInMeters = radius * 1609.34; // Convert miles to meters
   
   // Fields for the initial Text Search (basic info + place_id)
+  // Note: Text Search (classic) can also return website and international_phone_number,
+  // but it's less reliable than a dedicated Place Details call.
   const textSearchFields = "place_id,name,formatted_address,rating,user_ratings_total";
   const textSearchApiUrl = `${TEXT_SEARCH_API_URL}?query=${encodeURIComponent(query)}&radius=${radiusInMeters}&fields=${encodeURIComponent(textSearchFields)}&key=${GOOGLE_PLACES_API_KEY}`;
 
@@ -66,16 +70,18 @@ export async function searchBusinessesAction(
       address: place.formatted_address,
       rating: place.rating,
       reviewsCount: place.user_ratings_total,
-      phoneNumber: undefined,
-      website: undefined,
+      phoneNumber: undefined, // Will be fetched by Place Details (New)
+      website: undefined,     // Will be fetched by Place Details (New)
     }));
 
     // Step 2: Fetch details (phone number, website) for each business using Place Details (New) API
     const detailedBusinesses = await Promise.all(
       businessesFromTextSearch.map(async (baseBusiness: Business) => {
-        // Fields for Place Details (New) API
-        // Correct field names for New API: internationalPhoneNumber, websiteUri
+        // Fields for Place Details (New) API: internationalPhoneNumber, websiteUri
         const placeDetailsFieldsToFetch = "internationalPhoneNumber,websiteUri"; 
+        
+        // Construct the URL according to: GET https://places.googleapis.com/v1/{name=places/*}
+        // where `name` is `places/{place_id}`. So, the URL becomes `places.googleapis.com/v1/places/{place_id}`
         const placeDetailsUrl = `${PLACE_DETAILS_NEW_API_URL_BASE}/${baseBusiness.id}?fields=${encodeURIComponent(placeDetailsFieldsToFetch)}`;
         
         let augmentedBusiness: Business = { ...baseBusiness };
@@ -86,6 +92,8 @@ export async function searchBusinessesAction(
             headers: {
               'X-Goog-Api-Key': GOOGLE_PLACES_API_KEY, // API Key in header for New API
               'Content-Type': 'application/json',
+              // The "FieldMask" specifying the fields to return is passed as a URL parameter,
+              // not as 'X-Goog-Fieldmask' for GET requests like this.
             }
           });
 
@@ -116,9 +124,8 @@ export async function searchBusinessesAction(
   } catch (error) {
     console.error("Error in searchBusinessesAction:", error);
     if (error instanceof Error) {
-        // This check might need to be more sophisticated if new API key errors are different
-        if (error.message.includes("API key not valid") || error.message.includes("API key is missing")) {
-             throw new Error("Invalid or missing Google Places API key. Please check your .env.local file and Google Cloud Console settings for the Places API (New).");
+        if (error.message.includes("API key not valid") || error.message.includes("API key is missing") || error.message.includes("API_KEY_INVALID")) {
+             throw new Error("Invalid or missing Google Places API key. Please check your .env.local file and ensure the Places API is enabled and unrestricted for this key in your Google Cloud Console.");
         }
         throw new Error(`An error occurred while searching for businesses: ${error.message}`);
     }
