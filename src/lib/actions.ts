@@ -32,15 +32,17 @@ export async function searchBusinessesAction(
   const query = `${category} in ${location}`;
   const radiusInMeters = radius * 1609.34; // Convert miles to meters
   
-  // Explicitly request the fields we need to ensure they are returned.
+  // Explicitly request the fields we need to ensure they are returned by Text Search.
+  // Note: While Text Search *can* return these, it's not always guaranteed for all results.
+  // For guaranteed details, a Place Details request per place_id would be needed.
   const fieldsToRequest = [
     "place_id",
     "name",
     "formatted_address",
-    "international_phone_number",
-    "website",
+    "international_phone_number", // For phone number
+    "website",                    // For website
     "rating",
-    "user_ratings_total"
+    "user_ratings_total"          // For total review count
   ].join(",");
 
   const apiUrl = `${PLACES_API_BASE_URL}?query=${encodeURIComponent(query)}&radius=${radiusInMeters}&fields=${encodeURIComponent(fieldsToRequest)}&key=${GOOGLE_PLACES_API_KEY}`;
@@ -51,7 +53,14 @@ export async function searchBusinessesAction(
 
     if (!response.ok || (data.status !== "OK" && data.status !== "ZERO_RESULTS")) {
       console.error("Google Places API Error:", data.status, data.error_message, data.info_messages);
-      throw new Error(data.error_message || `Failed to fetch data from Google Places API. Status: ${data.status}`);
+      // Provide a more user-friendly error if available
+      let errorMessage = "Failed to fetch data from Google Places API.";
+      if (data.error_message) {
+        errorMessage = data.error_message;
+      } else if (data.status) {
+        errorMessage += ` Status: ${data.status}`;
+      }
+      throw new Error(errorMessage);
     }
 
     if (data.status === "ZERO_RESULTS") {
@@ -59,11 +68,11 @@ export async function searchBusinessesAction(
     }
 
     return data.results.map((place: any): Business => ({
-      id: place.place_id,
+      id: place.place_id, // This is the place_id
       name: place.name,
       address: place.formatted_address,
-      phoneNumber: place.international_phone_number,
-      website: place.website,
+      phoneNumber: place.international_phone_number, // Mapped from API
+      website: place.website,                       // Mapped from API
       rating: place.rating,
       reviewsCount: place.user_ratings_total,
     }));
@@ -71,9 +80,12 @@ export async function searchBusinessesAction(
   } catch (error) {
     console.error("Error in searchBusinessesAction:", error);
     if (error instanceof Error) {
+        // Try to give a more specific error message if it's a known API issue
+        if (error.message.includes("API key not valid")) {
+             throw new Error("Invalid Google Places API key. Please check your .env.local file and Google Cloud Console settings.");
+        }
         throw new Error(`An error occurred while searching for businesses: ${error.message}`);
     }
     throw new Error("An unknown error occurred while searching for businesses.");
   }
 }
-

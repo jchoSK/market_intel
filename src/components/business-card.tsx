@@ -33,12 +33,22 @@ const renderStars = (rating?: number) => {
 };
 
 export default function BusinessCard({ business }: BusinessCardProps) {
+  const gbpUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(business.name)}&query_place_id=${business.id}`;
+
   return (
     <Card className="flex flex-col h-full shadow-md hover:shadow-lg transition-shadow duration-200">
       <CardHeader>
-        <CardTitle className="text-xl text-primary flex items-center">
-          <Building className="mr-2 h-5 w-5 text-primary/80" />
-          {business.name}
+        <CardTitle className="text-xl text-primary">
+          <a
+            href={gbpUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hover:underline flex items-center"
+            aria-label={`View ${business.name} on Google Maps`}
+          >
+            <Building className="mr-2 h-5 w-5 text-primary/80 shrink-0" />
+            <span className="truncate">{business.name}</span>
+          </a>
         </CardTitle>
         <CardDescription>{business.address}</CardDescription>
       </CardHeader>
@@ -51,22 +61,29 @@ export default function BusinessCard({ business }: BusinessCardProps) {
         </div>
         {business.phoneNumber && (
           <div className="flex items-center text-sm">
-            <Phone className="mr-2 h-4 w-4 text-muted-foreground" />
-            <span>{business.phoneNumber}</span>
+            <Phone className="mr-2 h-4 w-4 text-muted-foreground shrink-0" />
+            <span className="truncate">{business.phoneNumber}</span>
           </div>
         )}
         {business.website && (
           <div className="flex items-center text-sm">
-            <Globe className="mr-2 h-4 w-4 text-muted-foreground" />
-            <a href={business.website.startsWith('http') ? business.website : `https://${business.website}`} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline truncate">
+            <Globe className="mr-2 h-4 w-4 text-muted-foreground shrink-0" />
+            <a 
+              href={business.website.startsWith('http') ? business.website : `https://${business.website}`} 
+              target="_blank" 
+              rel="noopener noreferrer" 
+              className="text-primary hover:underline truncate"
+              aria-label={`Visit website for ${business.name}`}
+            >
               {business.website}
             </a>
           </div>
         )}
       </CardContent>
       <CardFooter>
-        {/* Previous content related to isAdWordsCustomer was here. CardFooter is kept for potential future additions. */}
+        {/* CardFooter is kept for potential future additions. */}
       </CardFooter>
     </Card>
   );
 }
+
