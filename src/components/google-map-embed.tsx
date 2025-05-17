@@ -16,6 +16,7 @@ const GoogleMapEmbed: React.FC<GoogleMapEmbedProps> = ({ businesses, apiKey, sea
   const [markers, setMarkers] = useState<google.maps.marker.AdvancedMarkerElement[]>([]);
   const [apiLoaded, setApiLoaded] = useState(false);
   const [scriptError, setScriptError] = useState<string | null>(null);
+  const [activeInfoWindow, setActiveInfoWindow] = useState<google.maps.InfoWindow | null>(null);
 
   useEffect(() => {
     if (!apiKey) {
@@ -106,11 +107,16 @@ const GoogleMapEmbed: React.FC<GoogleMapEmbedProps> = ({ businesses, apiKey, sea
         setScriptError("Error initializing Google Map. See console for details.");
       }
     }
-  }, [apiLoaded, map, searchedLocation, businesses]); // Added businesses to deps for initial centering logic
+  }, [apiLoaded, map, searchedLocation, businesses]);
 
   useEffect(() => {
+    // Clear existing markers and close active info window
     markers.forEach(marker => marker.map = null);
     setMarkers([]);
+    if (activeInfoWindow) {
+      activeInfoWindow.close();
+      setActiveInfoWindow(null);
+    }
 
     if (map && businesses.length > 0) {
       console.log(`Updating markers for ${businesses.length} businesses.`);
@@ -152,7 +158,11 @@ const GoogleMapEmbed: React.FC<GoogleMapEmbedProps> = ({ businesses, apiKey, sea
             });
             
             marker.addListener('click', () => {
+                if (activeInfoWindow) {
+                  activeInfoWindow.close();
+                }
                 infoWindow.open({ anchor: marker, map });
+                setActiveInfoWindow(infoWindow);
             });
 
             newMarkersArray.push(marker);
@@ -168,8 +178,8 @@ const GoogleMapEmbed: React.FC<GoogleMapEmbedProps> = ({ businesses, apiKey, sea
       setMarkers(newMarkersArray);
 
       if (validMarkersCount > 0) {
-        if (validMarkersCount === 1) {
-          map.setCenter(bounds.getCenter());
+        if (validMarkersCount === 1 && newMarkersArray[0].position) {
+          map.setCenter(newMarkersArray[0].position);
           map.setZoom(15); 
           console.log("Single marker, centering and zooming to 15.");
         } else {
@@ -191,7 +201,7 @@ const GoogleMapEmbed: React.FC<GoogleMapEmbedProps> = ({ businesses, apiKey, sea
             console.log("No businesses, centering on searched location.");
         }
     }
-  }, [map, businesses, searchedLocation]); 
+  }, [map, businesses, searchedLocation]); // activeInfoWindow removed from deps to avoid re-rendering loop, managed inside
 
 
   if (!apiKey) {
