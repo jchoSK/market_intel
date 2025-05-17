@@ -57,7 +57,7 @@ export default function MarketAnalyzerPage() {
     <div className="container mx-auto px-4 py-8 md:px-8 md:py-12 space-y-10 min-h-screen">
       <header className="text-center space-y-4"> {/* Increased space-y for logo */}
         <div className="flex items-center justify-center space-x-3">
-          <SearchKingsLogo className="w-14 h-auto md:w-16 md:h-auto text-primary" /> {/* Adjusted classes for aspect ratio */}
+          <SearchKingsLogo className="w-14 h-auto md:w-16 md:h-auto" /> {/* Removed text-primary */}
           <h1 className="text-4xl md:text-5xl font-extrabold text-primary tracking-tight">
             SearchKings Market Analyzer
           </h1>
