@@ -8,7 +8,7 @@ import { searchBusinessesAction } from '@/lib/actions';
 import { Loader2, AlertTriangle, Info } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from "@/hooks/use-toast";
-import { SearchKingsLogo } from '@/components/searchkings-logo'; // Import the logo
+import { SearchKingsLogo } from '@/components/searchkings-logo';
 
 export default function MarketAnalyzerPage() {
   const [results, setResults] = useState<Business[]>([]);
@@ -57,7 +57,7 @@ export default function MarketAnalyzerPage() {
     <div className="container mx-auto px-4 py-8 md:px-8 md:py-12 space-y-10 min-h-screen">
       <header className="text-center space-y-4"> {/* Increased space-y for logo */}
         <div className="flex items-center justify-center space-x-3">
-          <SearchKingsLogo className="h-10 w-14 md:h-12 md:w-16 text-primary" /> {/* Added logo */}
+          <SearchKingsLogo className="w-14 h-auto md:w-16 md:h-auto text-primary" /> {/* Adjusted classes for aspect ratio */}
           <h1 className="text-4xl md:text-5xl font-extrabold text-primary tracking-tight">
             SearchKings Market Analyzer
           </h1>

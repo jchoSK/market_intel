@@ -4,13 +4,11 @@ import type { SVGProps } from 'react';
 export function SearchKingsLogo(props: SVGProps<SVGSVGElement>) {
   return (
     <svg
-      width="56"
-      height="40"
       viewBox="0 0 56 40"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
       aria-label="SearchKings Crown Logo"
-      {...props}
+      {...props} // width and height will be controlled by CSS via className
     >
       <title>SearchKings Crown</title>
       <path
@@ -40,13 +38,13 @@ export function SearchKingsLogo(props: SVGProps<SVGSVGElement>) {
         <linearGradient
             id="paint1_linear_crown"
             x1="28"
-            y1="32.8" 
+            y1="32.8"
             x2="28"
             y2="40.2"
             gradientUnits="userSpaceOnUse"
         >
             <stop stopColor="#FFA300" />
-            <stop offset="1" stopColor="#E69500" /> 
+            <stop offset="1" stopColor="#E69500" />
         </linearGradient>
       </defs>
     </svg>
