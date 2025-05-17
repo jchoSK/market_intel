@@ -1,3 +1,4 @@
+
 "use server";
 
 import type { Business } from "@/types";
@@ -9,11 +10,17 @@ const searchSchema = z.object({
   radius: z.coerce.number().min(1, "Radius must be at least 1").max(50, "Radius cannot exceed 50"),
 });
 
-const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+const GOOGLE_PLACES_API_KEY = process.env.GOOGLE_PLACES_API_KEY;
+const PLACES_API_BASE_URL = "https://maps.googleapis.com/maps/api/place/textsearch/json";
 
 export async function searchBusinessesAction(
   params: { category: string; location: string; radius: number }
 ): Promise<Business[]> {
+  if (!GOOGLE_PLACES_API_KEY) {
+    console.error("Google Places API key is missing. Please set GOOGLE_PLACES_API_KEY environment variable in .env.local and restart your server.");
+    throw new Error("Server configuration error: API key missing. Please ensure GOOGLE_PLACES_API_KEY is set.");
+  }
+
   const validation = searchSchema.safeParse(params);
   if (!validation.success) {
     const firstError = Object.values(validation.error.flatten().fieldErrors)[0]?.[0];
@@ -22,70 +29,41 @@ export async function searchBusinessesAction(
 
   const { category, location, radius } = validation.data;
 
-  await delay(1500); // Simulate API call latency
+  const query = `${category} in ${location}`;
+  const radiusInMeters = radius * 1609.34; // Convert miles to meters
 
-  if (category.toLowerCase() === "error") {
-    throw new Error("Simulated server error: Could not connect to the search service.");
-  }
+  // Text Search biases results by radius but might include prominent results outside it.
+  // The fields requested are generally returned by default in recent versions of the Text Search API.
+  const apiUrl = `${PLACES_API_BASE_URL}?query=${encodeURIComponent(query)}&radius=${radiusInMeters}&key=${GOOGLE_PLACES_API_KEY}`;
 
-  if (category.toLowerCase() === "noresults") {
-    return [];
-  }
-  
-  const mockResults: Business[] = [
-    {
-      id: "1",
-      name: `Awesome ${category} in ${location}`,
-      address: `123 Main St, ${location}, USA`,
-      phoneNumber: "555-1234",
-      website: "https://example.com",
-      rating: 4.5,
-      reviewsCount: 150,
-      isAdWordsCustomer: Math.random() > 0.5,
-    },
-    {
-      id: "2",
-      name: `Superb ${category} Services`,
-      address: `456 Oak Ave, ${location}, USA`,
-      phoneNumber: "555-5678",
-      website: "https://another-example.com",
-      rating: 4.8,
-      reviewsCount: 220,
-      isAdWordsCustomer: Math.random() > 0.5,
-    },
-    {
-      id: "3",
-      name: `${category} Hub Central`,
-      address: `789 Pine Ln, ${location} (Radius: ${radius} miles)`,
-      phoneNumber: "555-9012",
-      website: "https://hub-example.com",
-      rating: 4.2,
-      reviewsCount: 90,
-      isAdWordsCustomer: Math.random() > 0.5,
-    },
-    {
-      id: "4",
-      name: `The ${location} ${category} Experts`,
-      address: `101 Market Blvd, ${location}, USA`,
-      rating: 3.9,
-      reviewsCount: 75,
-      isAdWordsCustomer: Math.random() > 0.3,
-    },
-     {
-      id: "5",
-      name: `Budget ${category} Solutions ${location}`,
-      address: `22 Industrial Park, ${location}, USA`,
-      phoneNumber: "555-0000",
-      website: "https://budget.example.com",
-      rating: 3.5,
-      reviewsCount: 40,
-      isAdWordsCustomer: Math.random() > 0.7,
+  try {
+    const response = await fetch(apiUrl);
+    const data = await response.json();
+
+    if (!response.ok || (data.status !== "OK" && data.status !== "ZERO_RESULTS")) {
+      console.error("Google Places API Error:", data.status, data.error_message);
+      throw new Error(data.error_message || `Failed to fetch data from Google Places API. Status: ${data.status}`);
     }
-  ];
-  
-  // Simulate some filtering based on actual parameters
-  return mockResults.filter(b => 
-    b.name.toLowerCase().includes(category.toLowerCase()) || 
-    b.address.toLowerCase().includes(location.toLowerCase())
-  ).slice(0, Math.floor(Math.random() * 5) + 1); // Return a random number of results up to 5
+
+    if (data.status === "ZERO_RESULTS") {
+      return [];
+    }
+
+    return data.results.map((place: any): Business => ({
+      id: place.place_id,
+      name: place.name,
+      address: place.formatted_address,
+      phoneNumber: place.international_phone_number, // May not always be present
+      website: place.website, // May not always be present
+      rating: place.rating,
+      reviewsCount: place.user_ratings_total,
+    }));
+
+  } catch (error) {
+    console.error("Error in searchBusinessesAction:", error);
+    if (error instanceof Error) {
+        throw new Error(`An error occurred while searching for businesses: ${error.message}`);
+    }
+    throw new Error("An unknown error occurred while searching for businesses.");
+  }
 }

@@ -1,10 +1,9 @@
-"use client"; // Needs to be client for Math.random if used directly, or if event handlers/hooks are added.
-                 // Keeping it client for potential future interactions on the card.
+
+"use client"; 
 
 import type { Business } from "@/types";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Star, StarHalf, Phone, Globe, CheckCircle2, XCircle, Building } from "lucide-react";
+import { Star, StarHalf, Phone, Globe, Building } from "lucide-react";
 
 interface BusinessCardProps {
   business: Business;
@@ -16,8 +15,8 @@ const renderStars = (rating?: number) => {
   }
   
   const fullStars = Math.floor(rating);
-  const halfStar = rating % 1 >= 0.25 && rating % 1 < 0.75; // Threshold for half star
-  const effectivelyFullStar = rating % 1 >= 0.75; // Treat .75 and above as full for rounding display
+  const halfStar = rating % 1 >= 0.25 && rating % 1 < 0.75;
+  const effectivelyFullStar = rating % 1 >= 0.75;
   const displayFullStars = fullStars + (effectivelyFullStar ? 1 : 0);
   const displayHalfStar = halfStar && !effectivelyFullStar;
 
@@ -66,16 +65,7 @@ export default function BusinessCard({ business }: BusinessCardProps) {
         )}
       </CardContent>
       <CardFooter>
-        {typeof business.isAdWordsCustomer === 'boolean' && (
-          <Badge variant={business.isAdWordsCustomer ? "default" : "secondary"} className={business.isAdWordsCustomer ? "bg-green-600 hover:bg-green-700 text-white" : "bg-red-500 hover:bg-red-600 text-white"}>
-            {business.isAdWordsCustomer ? (
-              <CheckCircle2 className="mr-1 h-4 w-4" />
-            ) : (
-              <XCircle className="mr-1 h-4 w-4" />
-            )}
-            Google Ads: {business.isAdWordsCustomer ? "Active" : "Inactive"}
-          </Badge>
-        )}
+        {/* Previous content related to isAdWordsCustomer was here. CardFooter is kept for potential future additions. */}
       </CardFooter>
     </Card>
   );
