@@ -1,3 +1,9 @@
+import MarketAnalyzerPage from '@/components/market-analyzer-page';
+
 export default function Home() {
-  return <></>;
+  return (
+    <main>
+      <MarketAnalyzerPage />
+    </main>
+  );
 }
