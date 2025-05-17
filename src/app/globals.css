@@ -8,92 +8,97 @@ body {
 
 @layer base {
   :root {
-    --background: 196 93% 94%; /* Light blue */
-    --foreground: 224 71% 4%; /* Dark blue, almost black for high contrast text */
+    --background: 0 0% 100%; /* SK White #FFFFFF */
+    --foreground: 0 0% 0%; /* SK Black #000000 */
     
-    --card: 0 0% 100%; /* White cards */
-    --card-foreground: 224 71% 4%;
+    --card: 0 0% 100%; /* SK White */
+    --card-foreground: 0 0% 0%; /* SK Black */
     
-    --popover: 0 0% 100%; /* White popovers */
-    --popover-foreground: 224 71% 4%;
+    --popover: 0 0% 100%; /* SK White */
+    --popover-foreground: 0 0% 0%; /* SK Black */
     
-    --primary: 199 74% 53%; /* Vibrant blue */
-    --primary-foreground: 0 0% 100%; /* White */
+    --primary: 1 80% 50%; /* SK Red #E41F1B */
+    --primary-foreground: 0 0% 100%; /* SK White */
     
-    --secondary: 210 40% 96.1%; /* Default light gray - can be adjusted for better harmony */
-    --secondary-foreground: 224 71% 4%;
+    --secondary: 0 0% 92%; /* Light Grey, derived from SK Grey #EAEAEA */
+    --secondary-foreground: 0 0% 0%; /* SK Black */
     
-    --muted: 210 40% 96.1%; /* Default light gray for muted elements */
-    --muted-foreground: 220 9% 46%; /* Softer gray for muted text */
+    --muted: 0 0% 96%; /* Very Light Grey #F5F5F5 */
+    --muted-foreground: 0 0% 40%; /* Medium Grey #666666 (darker than SK Grey for muted text on light bg) */
     
-    --accent: 291 64% 42%; /* Contrasting purple */
-    --accent-foreground: 0 0% 100%; /* White */
+    --accent: 38 100% 50%; /* SK Gold #FFA300 */
+    --accent-foreground: 0 0% 0%; /* SK Black */
     
-    --destructive: 0 72% 51%; /* A strong red */
-    --destructive-foreground: 0 0% 100%; /* White */
+    --destructive: 1 80% 50%; /* SK Red #E41F1B */
+    --destructive-foreground: 0 0% 100%; /* SK White */
     
-    --border: 215 28% 83%; /* Light gray border, less prominent */
-    --input: 215 28% 83%; /* Input border color */
-    --ring: 199 74% 53%; /* Vibrant blue for focus rings */
+    --border: 0 0% 87%; /* Lighter Grey #DDDDDD */
+    --input: 0 0% 87%; /* Lighter Grey #DDDDDD */
+    --ring: 38 100% 50%; /* SK Gold #FFA300 */
     
     --radius: 0.5rem;
 
-    --chart-1: 199 74% 53%; /* primary */
-    --chart-2: 291 64% 42%; /* accent */
-    --chart-3: 210 40% 50%; /* neutral-ish */
-    --chart-4: 43 74% 66%; /* a warm color */
-    --chart-5: 27 87% 67%; /* another warm color */
+    --chart-1: 1 80% 50%;    /* SK Red */
+    --chart-2: 38 100% 50%;  /* SK Gold */
+    --chart-3: 0 0% 29%;    /* SK Grey #4A4A4A */
+    --chart-4: 38 100% 70%;  /* Lighter SK Gold */
+    --chart-5: 1 80% 35%;    /* Darker SK Red */
 
-    /* Sidebar specific colors - kept default or can be themed if sidebar is used */
-    --sidebar-background: 0 0% 98%;
-    --sidebar-foreground: 240 5.3% 26.1%;
-    --sidebar-primary: 240 5.9% 10%;
-    --sidebar-primary-foreground: 0 0% 98%;
-    --sidebar-accent: 240 4.8% 95.9%;
-    --sidebar-accent-foreground: 240 5.9% 10%;
-    --sidebar-border: 220 13% 91%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    /* Sidebar specific colors - Light Theme */
+    --sidebar-background: 0 0% 97%; /* Slightly off-white #F7F7F7 */
+    --sidebar-foreground: 0 0% 29%; /* SK Grey #4A4A4A */
+    --sidebar-primary: 1 80% 50%; /* SK Red */
+    --sidebar-primary-foreground: 0 0% 100%; /* SK White */
+    --sidebar-accent: 1 80% 90%; /* Very Light SK Red #FADBD8 */
+    --sidebar-accent-foreground: 1 80% 40%; /* Darker SK Red for text on light red accent */
+    --sidebar-border: 0 0% 87%; /* Lighter Grey, consistent with main border */
+    --sidebar-ring: 38 100% 50%; /* SK Gold */
   }
 
   .dark {
-    /* Dark theme (basic inversion, can be refined if dark mode is a focus) */
-    --background: 224 71% 4%; /* Dark blue background */
-    --foreground: 196 93% 94%; /* Light blue foreground */
+    --background: 0 0% 0%; /* SK Black #000000 */
+    --foreground: 0 0% 100%; /* SK White #FFFFFF */
     
-    --card: 222 84% 6%; /* Slightly darker card */
-    --card-foreground: 196 93% 94%;
+    --card: 0 0% 10%; /* Very Dark Grey #1A1A1A */
+    --card-foreground: 0 0% 100%; /* SK White */
     
-    --popover: 222 84% 6%;
-    --popover-foreground: 196 93% 94%;
+    --popover: 0 0% 10%; /* Very Dark Grey #1A1A1A */
+    --popover-foreground: 0 0% 100%; /* SK White */
     
-    --primary: 199 74% 53%; /* Vibrant blue (can be kept or slightly desaturated) */
-    --primary-foreground: 0 0% 100%;
+    --primary: 1 80% 55%; /* SK Red, slightly lighter for dark mode #EC403A */
+    --primary-foreground: 0 0% 0%; /* SK Black (for contrast on lighter red) */
     
-    --secondary: 222 47% 11%; /* Darker secondary */
-    --secondary-foreground: 196 93% 94%;
+    --secondary: 0 0% 15%; /* Dark Grey #262626 */
+    --secondary-foreground: 0 0% 80%; /* Light Grey text #CCCCCC */
     
-    --muted: 222 47% 11%;
-    --muted-foreground: 215 20% 65%; /* Lighter muted text */
+    --muted: 0 0% 12%; /* Darker Muted Grey #1F1F1F */
+    --muted-foreground: 0 0% 65%; /* Medium-Light Grey text #A6A6A6 */
     
-    --accent: 291 64% 52%; /* Purple, maybe slightly brighter for dark mode */
-    --accent-foreground: 0 0% 100%;
+    --accent: 38 100% 55%; /* SK Gold, slightly lighter for dark mode #FFB029 */
+    --accent-foreground: 0 0% 0%; /* SK Black */
     
-    --destructive: 0 63% 31%; /* Darker red */
-    --destructive-foreground: 0 0% 98%;
+    --destructive: 1 80% 55%; /* SK Red, slightly lighter for dark mode #EC403A */
+    --destructive-foreground: 0 0% 0%; /* SK Black (for contrast on lighter red) */
     
-    --border: 217 33% 17%; /* Darker border */
-    --input: 217 33% 17%; /* Darker input border */
-    --ring: 199 74% 63%; /* Brighter blue for ring in dark mode */
+    --border: 0 0% 20%; /* Medium-Dark Grey #333333 */
+    --input: 0 0% 20%; /* Medium-Dark Grey #333333 */
+    --ring: 38 100% 55%; /* SK Gold, slightly lighter #FFB029 */
     
-    /* Sidebar specific colors for dark mode */
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --chart-1: 1 80% 60%;    /* Brighter SK Red */
+    --chart-2: 38 100% 60%;  /* Brighter SK Gold */
+    --chart-3: 0 0% 70%;    /* Light SK Grey */
+    --chart-4: 38 100% 80%;  /* Even Lighter SK Gold */
+    --chart-5: 1 80% 45%;    /* Darker SK Red (but visible on black) */
+
+    /* Sidebar specific colors - Dark Theme */
+    --sidebar-background: 0 0% 8%; /* Dark Grey, slightly lighter than pure black bg #141414 */
+    --sidebar-foreground: 0 0% 80%; /* Light Grey Text #CCCCCC */
+    --sidebar-primary: 1 80% 55%; /* Lightened SK Red #EC403A */
+    --sidebar-primary-foreground: 0 0% 0%; /* SK Black */
+    --sidebar-accent: 1 80% 20%; /* Very Dark SK Red for hover/active backgrounds #4B0F0E */
+    --sidebar-accent-foreground: 1 80% 70%; /* Lightened SK Red for text on dark red accent #F17E7A */
+    --sidebar-border: 0 0% 15%; /* Dark Grey, consistent with main dark border */
+    --sidebar-ring: 38 100% 55%; /* Lightened SK Gold */
   }
 }
 
