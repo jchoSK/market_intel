@@ -2,8 +2,8 @@
 "use client"; 
 
 import type { Business } from "@/types";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Star, StarHalf, Phone, Globe, Building } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Star, StarHalf, Building } from "lucide-react";
 
 interface BusinessCardProps {
   business: Business;
@@ -37,7 +37,7 @@ export default function BusinessCard({ business }: BusinessCardProps) {
 
   return (
     <Card className="flex flex-col h-full shadow-md hover:shadow-lg transition-shadow duration-200">
-      <CardHeader>
+      <CardHeader className="pb-2">
         <CardTitle className="text-xl text-primary">
           <a
             href={gbpUrl}
@@ -50,24 +50,22 @@ export default function BusinessCard({ business }: BusinessCardProps) {
             <span className="truncate">{business.name}</span>
           </a>
         </CardTitle>
-        <CardDescription>{business.address}</CardDescription>
       </CardHeader>
-      <CardContent className="flex-grow space-y-3">
-        <div className="flex items-center space-x-2">
-          {renderStars(business.rating)}
-          {typeof business.reviewsCount === 'number' && (
-            <span className="text-sm text-muted-foreground">({business.reviewsCount} reviews)</span>
-          )}
-        </div>
+      <CardContent className="flex-grow space-y-1 pt-2">
+        {business.address && (
+          <p className="text-sm text-muted-foreground mb-2">{business.address}</p>
+        )}
+        
         {business.phoneNumber && (
-          <div className="flex items-center text-sm">
-            <Phone className="mr-2 h-4 w-4 text-muted-foreground shrink-0" />
-            <span className="truncate">{business.phoneNumber}</span>
+          <div className="text-sm mb-1">
+            <span className="font-medium text-foreground">Phone: </span>
+            <span className="text-muted-foreground truncate">{business.phoneNumber}</span>
           </div>
         )}
+
         {business.website && (
-          <div className="flex items-center text-sm">
-            <Globe className="mr-2 h-4 w-4 text-muted-foreground shrink-0" />
+          <div className="text-sm mb-2">
+            <span className="font-medium text-foreground">Website: </span>
             <a 
               href={business.website.startsWith('http') ? business.website : `https://${business.website}`} 
               target="_blank" 
@@ -75,15 +73,25 @@ export default function BusinessCard({ business }: BusinessCardProps) {
               className="text-primary hover:underline truncate"
               aria-label={`Visit website for ${business.name}`}
             >
-              {business.website}
+              Website
             </a>
           </div>
         )}
+
+        <div className="flex items-center space-x-2 pt-1">
+          {renderStars(business.rating)}
+          {typeof business.reviewsCount === 'number' && (
+            <span className="text-sm text-muted-foreground">({business.reviewsCount} reviews)</span>
+          )}
+        </div>
+
+        {business.reviewSummary?.text && (
+            <p className="mt-2 text-xs text-muted-foreground italic">
+              &quot;{business.reviewSummary.text}&quot;
+            </p>
+        )}
       </CardContent>
-      <CardFooter>
-        {/* CardFooter is kept for potential future additions. */}
-      </CardFooter>
+      {/* CardFooter can be used for future additions if needed */}
     </Card>
   );
 }
-

@@ -128,16 +128,27 @@ const GoogleMapEmbed: React.FC<GoogleMapEmbedProps> = ({ businesses, apiKey, sea
               title: business.name,
             });
 
+            const websiteLink = business.website 
+              ? `<div style="font-size: 13px; margin-bottom: 4px;"><a href="${business.website.startsWith('http') ? business.website : `https://${business.website}`}" target="_blank" rel="noopener noreferrer" style="color: #E41F1B; text-decoration: none;">Website</a></div>`
+              : '';
+            const phoneInfo = business.phoneNumber 
+              ? `<div style="font-size: 13px; margin-bottom: 4px;">Phone: ${business.phoneNumber}</div>` 
+              : '';
+            const addressInfo = business.address
+              ? `<div style="font-size: 13px; margin-bottom: 4px;">${business.address}</div>`
+              : '';
+
             const infoWindowContent = 
-              `<div style="color: black; font-family: sans-serif; padding: 5px;">` +
-              `<strong style="font-size: 1.1em;">${business.name}</strong><br>` +
-              `${business.address || ''}` +
-              `${business.phoneNumber ? `<br>Phone: ${business.phoneNumber}` : ''}` +
-              `${business.website ? `<br><a href="${business.website.startsWith('http') ? business.website : `https://${business.website}`}" target="_blank" rel="noopener noreferrer" style="color: #E41F1B;">Website</a>` : ''}` +
+              `<div style="font-family: Arial, Helvetica, sans-serif; color: #000000; padding: 8px; max-width: 280px; line-height: 1.4;">` +
+              `<strong style="font-size: 16px; display: block; margin-bottom: 5px;">${business.name}</strong>` +
+              `${addressInfo}` +
+              `${phoneInfo}` +
+              `${websiteLink}` +
               `</div>`;
 
             const infoWindow = new google.maps.InfoWindow({
               content: infoWindowContent,
+              maxWidth: 300,
             });
             
             marker.addListener('click', () => {
@@ -167,22 +178,20 @@ const GoogleMapEmbed: React.FC<GoogleMapEmbedProps> = ({ businesses, apiKey, sea
         }
       } else {
         console.log("No valid markers to display. Map will remain at initial/default center/zoom.");
-         // If no markers but searchedLocation exists, ensure map centers there.
         if (searchedLocation) {
             map.setCenter({ lat: searchedLocation.lat, lng: searchedLocation.lng });
-            map.setZoom(12); // A reasonable zoom level for a general location
+            map.setZoom(12); 
         }
       }
     } else if (map && businesses.length === 0) {
         console.log("No businesses to display. Clearing markers.");
-        // If no businesses but searchedLocation exists, center map on searchedLocation
         if (searchedLocation) {
             map.setCenter({ lat: searchedLocation.lat, lng: searchedLocation.lng });
             map.setZoom(12);
             console.log("No businesses, centering on searched location.");
         }
     }
-  }, [map, businesses, searchedLocation]); // Added searchedLocation to re-evaluate bounds/center
+  }, [map, businesses, searchedLocation]); 
 
 
   if (!apiKey) {
@@ -193,7 +202,7 @@ const GoogleMapEmbed: React.FC<GoogleMapEmbedProps> = ({ businesses, apiKey, sea
     return <div className="p-4 text-destructive-foreground bg-destructive rounded-md">Error with Google Maps: {scriptError} Check the browser console for more details.</div>;
   }
 
-  return <div ref={mapRef} className="w-full h-full min-h-[400px] rounded-lg shadow-md" />; // Removed md:min-h-0
+  return <div ref={mapRef} className="w-full h-full min-h-[400px] rounded-lg shadow-md" />;
 };
 
 export default GoogleMapEmbed;
