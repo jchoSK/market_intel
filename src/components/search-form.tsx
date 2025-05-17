@@ -48,7 +48,7 @@ export default function SearchForm({ onSubmit, isLoading }: SearchFormProps) {
     defaultValues: {
       category: "",
       location: "",
-      radius: 5,
+      radius: 10,
     },
   });
 
@@ -71,7 +71,7 @@ export default function SearchForm({ onSubmit, isLoading }: SearchFormProps) {
                     Business Category
                   </FormLabel>
                   <FormControl>
-                    <Input placeholder="e.g., Restaurants, Plumbers" {...field} />
+                    <Input placeholder="e.g., AC repair, Plumbers" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

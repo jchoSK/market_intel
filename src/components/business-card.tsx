@@ -3,7 +3,7 @@
 
 import type { Business } from "@/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Star, StarHalf, Building } from "lucide-react";
+import { Star, StarHalf, Building, ExternalLink, SearchCheck, SearchSlash } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface BusinessCardProps {
@@ -36,10 +36,10 @@ const renderStars = (rating?: number) => {
 };
 
 export default function BusinessCard({ business, onSelect, isSelected }: BusinessCardProps) {
-  const gbpUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(business.name)}&query_place_id=${business.id}`;
+  const gbpUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(business.name || '')}&query_place_id=${business.id}`;
 
   const handleCardClick = () => {
-    if (onSelect) {
+    if (onSelect && business.id) {
       onSelect(business.id);
     }
   };
@@ -68,11 +68,11 @@ export default function BusinessCard({ business, onSelect, isSelected }: Busines
             target="_blank"
             rel="noopener noreferrer"
             className="text-primary hover:underline flex items-center"
-            onClick={(e) => e.stopPropagation()} // Prevents card click when link is clicked
+            onClick={(e) => e.stopPropagation()} 
             aria-label={`View ${business.name} on Google Maps`}
           >
             <Building className="mr-2 h-5 w-5 text-primary/80 shrink-0" />
-            <span className="truncate">{business.name}</span>
+            <span className="truncate">{business.name || "Unnamed Business"}</span>
           </a>
         </CardTitle>
       </CardHeader>
@@ -95,11 +95,11 @@ export default function BusinessCard({ business, onSelect, isSelected }: Busines
               href={business.website.startsWith('http') ? business.website : `https://${business.website}`} 
               target="_blank" 
               rel="noopener noreferrer" 
-              className="text-primary hover:underline truncate"
-              onClick={(e) => e.stopPropagation()} // Prevents card click when link is clicked
+              className="text-primary hover:underline truncate inline-flex items-center"
+              onClick={(e) => e.stopPropagation()}
               aria-label={`Visit website for ${business.name}`}
             >
-              Website
+              Website <ExternalLink className="ml-1 h-3 w-3" />
             </a>
           </div>
         )}
@@ -116,7 +116,38 @@ export default function BusinessCard({ business, onSelect, isSelected }: Busines
               &quot;{business.reviewSummary.text}&quot;
             </p>
         )}
+
+        {business.adsInfo && (
+          <div className="mt-2 pt-2 border-t border-border/50">
+            <p className="text-sm flex items-center">
+              <span className="font-medium text-foreground mr-1">Google Ads:</span>
+              {business.adsInfo.isRunningAds === true && (
+                <span className="text-green-600 font-semibold flex items-center">
+                  <SearchCheck className="mr-1 h-4 w-4" /> Active
+                </span>
+              )}
+              {business.adsInfo.isRunningAds === false && (
+                <span className="text-red-600 font-semibold flex items-center">
+                  <SearchSlash className="mr-1 h-4 w-4" /> Inactive
+                </span>
+              )}
+              {business.adsInfo.isRunningAds === null && (
+                <span className="text-muted-foreground">
+                  {business.adsInfo.adType || "Unknown"} 
+                </span>
+              )}
+            </p>
+            {business.adsInfo.isRunningAds === true && business.adsInfo.adType && business.adsInfo.adType !== "Google Ads" && (
+              <p className="text-xs text-muted-foreground">({business.adsInfo.adType})</p>
+            )}
+             {business.adsInfo.isRunningAds === null && business.adsInfo.adType && (
+              <p className="text-xs text-muted-foreground">({business.adsInfo.adType})</p>
+            )}
+          </div>
+        )}
       </CardContent>
     </Card>
   );
 }
+
+    
