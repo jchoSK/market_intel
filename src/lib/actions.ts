@@ -36,8 +36,8 @@ export async function searchBusinessesAction(
   const query = `${category} in ${location}`;
   const radiusInMeters = radius * 1609.34; // Convert miles to meters
   
-  // Fields for the initial Text Search (classic API) - focused on discovery
-  const textSearchFields = "place_id,name,formatted_address,rating,user_ratings_total";
+  // Fields for the initial Text Search (classic API) - include geometry for lat/lng
+  const textSearchFields = "place_id,name,formatted_address,rating,user_ratings_total,geometry";
   const textSearchApiUrl = `${TEXT_SEARCH_API_URL}?query=${encodeURIComponent(query)}&radius=${radiusInMeters}&fields=${encodeURIComponent(textSearchFields)}&key=${GOOGLE_PLACES_API_KEY}`;
 
   try {
@@ -67,12 +67,15 @@ export async function searchBusinessesAction(
       address: place.formatted_address,
       rating: place.rating,
       reviewsCount: place.user_ratings_total,
-      phoneNumber: undefined, // Will be fetched by Place Details (New)
-      website: undefined,     // Will be fetched by Place Details (New)
+      latitude: place.geometry?.location?.lat,
+      longitude: place.geometry?.location?.lng,
+      phoneNumber: undefined, 
+      website: undefined,
+      reviewSummary: undefined,
     }));
 
-    // Step 2: Fetch details (phone number, website) for each business using Place Details (New) API
-    const placeDetailsFieldsToFetch = "internationalPhoneNumber,websiteUri"; // These are in the Enterprise SKU
+    // Step 2: Fetch details for each business using Place Details (New) API
+    const placeDetailsFieldsToFetch = "internationalPhoneNumber,websiteUri,reviewSummary,location"; 
 
     const detailedBusinesses = await Promise.all(
       businessesFromTextSearch.map(async (baseBusiness: Business) => {
@@ -94,23 +97,30 @@ export async function searchBusinessesAction(
             }
           });
 
-          const responseText = await detailsResponse.text(); // Get raw response text for logging
+          const responseText = await detailsResponse.text(); 
 
           if (detailsResponse.ok) {
-            const detailsData = JSON.parse(responseText); // Parse after checking ok
+            const detailsData = JSON.parse(responseText);
             augmentedBusiness.phoneNumber = detailsData.internationalPhoneNumber;
             augmentedBusiness.website = detailsData.websiteUri;
+            augmentedBusiness.reviewSummary = detailsData.reviewSummary;
+             // Prefer details from Place Details (New) if available
+            if (detailsData.location?.latitude && detailsData.location?.longitude) {
+              augmentedBusiness.latitude = detailsData.location.latitude;
+              augmentedBusiness.longitude = detailsData.location.longitude;
+            }
             
-            // console.log(`Details for ${baseBusiness.name} (${baseBusiness.id}): `, JSON.stringify(detailsData, null, 2));
-            if (!detailsData.internationalPhoneNumber) console.warn(`Phone number missing in API response for ${baseBusiness.name} (${baseBusiness.id}). Response: ${JSON.stringify(detailsData)}`);
-            if (!detailsData.websiteUri) console.warn(`Website URI missing in API response for ${baseBusiness.name} (${baseBusiness.id}). Response: ${JSON.stringify(detailsData)}`);
+            if (!detailsData.internationalPhoneNumber) console.warn(`Phone number missing in API response for ${baseBusiness.name} (${baseBusiness.id}).`);
+            if (!detailsData.websiteUri) console.warn(`Website URI missing in API response for ${baseBusiness.name} (${baseBusiness.id}).`);
+            if (!detailsData.reviewSummary) console.warn(`Review summary missing in API response for ${baseBusiness.name} (${baseBusiness.id}).`);
+            if (!detailsData.location) console.warn(`Location data missing in Place Details API response for ${baseBusiness.name} (${baseBusiness.id})`);
 
           } else {
             let errorDetail = `Status: ${detailsResponse.status}. Response: ${responseText}`;
-            console.warn(`Could not fetch details for place_id ${baseBusiness.id} (${baseBusiness.name}) using Place Details (New) API: ${errorDetail}. URL: ${placeDetailsUrl}`);
+            console.warn(`Could not fetch details for ${baseBusiness.name} (ID: ${baseBusiness.id}) using Place Details (New) API: ${errorDetail}. URL: ${placeDetailsUrl}`);
           }
         } catch (detailsError) {
-          console.error(`Error fetching or parsing details for place_id ${baseBusiness.id} (${baseBusiness.name}) using Place Details (New) API:`, detailsError);
+          console.error(`Error fetching or parsing details for ${baseBusiness.name} (ID: ${baseBusiness.id}) using Place Details (New) API:`, detailsError);
         }
         return augmentedBusiness;
       })
@@ -122,10 +132,11 @@ export async function searchBusinessesAction(
     console.error("Error in searchBusinessesAction:", error);
     if (error instanceof Error) {
         if (error.message.includes("API key not valid") || error.message.includes("API key is missing") || error.message.includes("API_KEY_INVALID") || error.message.includes("API key not authorized")) {
-             throw new Error("Invalid, missing, or unauthorized Google Places API key. Please check your .env.local file and ensure the Places API (both classic and new v1) is enabled, unrestricted for your server/app, and that billing is active in your Google Cloud Console.");
+             throw new Error("Invalid, missing, or unauthorized Google Places API key. Please check your .env.local file, ensure the Places API (both classic and new v1 with relevant SKUs) and Maps JavaScript API are enabled, unrestricted for your server/app, and that billing is active in your Google Cloud Console.");
         }
         throw new Error(`An error occurred while searching for businesses: ${error.message}`);
     }
     throw new Error("An unknown error occurred while searching for businesses.");
   }
 }
+
