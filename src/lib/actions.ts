@@ -36,11 +36,13 @@ export async function searchBusinessesAction(
   const query = `${category} in ${location}`;
   const radiusInMeters = radius * 1609.34; // Convert miles to meters
   
+  // Fields for the initial Text Search (classic API) - focused on discovery
   const textSearchFields = "place_id,name,formatted_address,rating,user_ratings_total";
   const textSearchApiUrl = `${TEXT_SEARCH_API_URL}?query=${encodeURIComponent(query)}&radius=${radiusInMeters}&fields=${encodeURIComponent(textSearchFields)}&key=${GOOGLE_PLACES_API_KEY}`;
 
   try {
     // Step 1: Discover businesses using Text Search (Classic API)
+    console.log(`Fetching Text Search: ${textSearchApiUrl}`);
     const textSearchResponse = await fetch(textSearchApiUrl);
     const textSearchData = await textSearchResponse.json();
 
@@ -65,46 +67,50 @@ export async function searchBusinessesAction(
       address: place.formatted_address,
       rating: place.rating,
       reviewsCount: place.user_ratings_total,
-      phoneNumber: undefined,
-      website: undefined,
+      phoneNumber: undefined, // Will be fetched by Place Details (New)
+      website: undefined,     // Will be fetched by Place Details (New)
     }));
 
     // Step 2: Fetch details (phone number, website) for each business using Place Details (New) API
+    const placeDetailsFieldsToFetch = "internationalPhoneNumber,websiteUri"; // These are in the Enterprise SKU
+
     const detailedBusinesses = await Promise.all(
       businessesFromTextSearch.map(async (baseBusiness: Business) => {
-        const placeDetailsFieldsToFetch = "internationalPhoneNumber,websiteUri"; 
-        const placeDetailsUrl = `${PLACE_DETAILS_NEW_API_URL_BASE}/${baseBusiness.id}?fields=${encodeURIComponent(placeDetailsFieldsToFetch)}`;
+        if (!baseBusiness.id) {
+          console.warn(`Skipping details fetch for business without place_id: ${baseBusiness.name}`);
+          return baseBusiness;
+        }
         
+        const placeDetailsUrl = `${PLACE_DETAILS_NEW_API_URL_BASE}/${baseBusiness.id}`;
         let augmentedBusiness: Business = { ...baseBusiness };
 
         try {
+          console.log(`Fetching Place Details (New) for ${baseBusiness.name} (${baseBusiness.id}): ${placeDetailsUrl} with FieldMask: ${placeDetailsFieldsToFetch}`);
           const detailsResponse = await fetch(placeDetailsUrl, {
             method: 'GET',
             headers: {
               'X-Goog-Api-Key': GOOGLE_PLACES_API_KEY,
+              'X-Goog-FieldMask': placeDetailsFieldsToFetch,
             }
           });
 
+          const responseText = await detailsResponse.text(); // Get raw response text for logging
+
           if (detailsResponse.ok) {
-            const detailsData = await detailsResponse.json();
+            const detailsData = JSON.parse(responseText); // Parse after checking ok
             augmentedBusiness.phoneNumber = detailsData.internationalPhoneNumber;
             augmentedBusiness.website = detailsData.websiteUri;
-            // For debugging:
+            
             // console.log(`Details for ${baseBusiness.name} (${baseBusiness.id}): `, JSON.stringify(detailsData, null, 2));
-            // if (!detailsData.internationalPhoneNumber) console.warn(`Phone number missing in API response for ${baseBusiness.name}`);
-            // if (!detailsData.websiteUri) console.warn(`Website URI missing in API response for ${baseBusiness.name}`);
+            if (!detailsData.internationalPhoneNumber) console.warn(`Phone number missing in API response for ${baseBusiness.name} (${baseBusiness.id}). Response: ${JSON.stringify(detailsData)}`);
+            if (!detailsData.websiteUri) console.warn(`Website URI missing in API response for ${baseBusiness.name} (${baseBusiness.id}). Response: ${JSON.stringify(detailsData)}`);
+
           } else {
-            let errorDetail = `Status: ${detailsResponse.status}`;
-            try {
-                const errorJson = await detailsResponse.json();
-                if (errorJson.error && errorJson.error.message) {
-                    errorDetail = errorJson.error.message;
-                }
-            } catch (e) { /* Ignore JSON parsing error, use status text or original error */ }
+            let errorDetail = `Status: ${detailsResponse.status}. Response: ${responseText}`;
             console.warn(`Could not fetch details for place_id ${baseBusiness.id} (${baseBusiness.name}) using Place Details (New) API: ${errorDetail}. URL: ${placeDetailsUrl}`);
           }
         } catch (detailsError) {
-          console.error(`Error fetching details for place_id ${baseBusiness.id} (${baseBusiness.name}) using Place Details (New) API:`, detailsError);
+          console.error(`Error fetching or parsing details for place_id ${baseBusiness.id} (${baseBusiness.name}) using Place Details (New) API:`, detailsError);
         }
         return augmentedBusiness;
       })
