@@ -22,9 +22,6 @@ export default function MarketAnalyzerPage() {
   const [searchedLocationCenter, setSearchedLocationCenter] = useState<{lat: number, lng: number} | undefined>(undefined);
 
 
-  // IMPORTANT: This key is read at build time for server components,
-  // but for client components, it needs to be available when the component mounts.
-  // Ensure your .env.local is set up and you've RESTARTED your dev server.
   const mapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
 
   useEffect(() => {
@@ -33,7 +30,7 @@ export default function MarketAnalyzerPage() {
     }
     const timer = setTimeout(() => {
       setShowGreeting(false);
-    }, 100); // Short delay to allow initial render without greeting if a search is pending
+    }, 100);
     return () => clearTimeout(timer);
   }, [mapsApiKey]);
 
@@ -41,21 +38,19 @@ export default function MarketAnalyzerPage() {
     setIsLoading(true);
     setError(null);
     setHasSearched(true);
-    setShowGreeting(false); // Hide greeting on search
+    setShowGreeting(false);
     try {
-      // For map centering, ideally, we'd geocode the "location" input here.
-      // For simplicity, the map will center on the first result or a default.
-      // We could enhance this later by geocoding `data.location`.
       const searchResults = await searchBusinessesAction(data);
       setResults(searchResults);
       
-      // If results have coordinates, set a center for the map
       const firstResultWithCoords = searchResults.find(r => r.latitude != null && r.longitude != null);
       if (firstResultWithCoords) {
         setSearchedLocationCenter({ lat: firstResultWithCoords.latitude!, lng: firstResultWithCoords.longitude! });
       } else {
-        // Potentially geocode data.location here to set a map center even if no results
-        setSearchedLocationCenter(undefined); // Or a default like { lat: 0, lng: 0 } if you geocode `data.location`
+        // Potentially geocode data.location here if you have a geocoding function
+        // For now, if no results have coords, map won't specifically center on search,
+        // but GoogleMapEmbed might use its own default or center on existing markers.
+        setSearchedLocationCenter(undefined); 
       }
 
       toast({
@@ -124,7 +119,7 @@ export default function MarketAnalyzerPage() {
 
         {!isLoading && !error && hasSearched && (
           <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8 items-start">
-            <div className="md:col-span-2 h-[500px] md:h-auto md:sticky md:top-6">
+            <div className="md:col-span-2 h-[500px] md:h-[600px] md:sticky md:top-6"> {/* Changed md:h-auto to md:h-[600px] */}
               {mapsApiKey ? (
                 <GoogleMapEmbed businesses={results} apiKey={mapsApiKey} searchedLocation={searchedLocationCenter} />
               ) : (
@@ -167,5 +162,4 @@ export default function MarketAnalyzerPage() {
     </div>
   );
 }
-
     

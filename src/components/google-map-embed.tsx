@@ -7,7 +7,7 @@ import React, { useEffect, useRef, useState } from 'react';
 interface GoogleMapEmbedProps {
   businesses: Business[];
   apiKey: string;
-  searchedLocation?: { lat: number; lng: number }; // Optional: for centering map on search
+  searchedLocation?: { lat: number; lng: number };
 }
 
 const GoogleMapEmbed: React.FC<GoogleMapEmbedProps> = ({ businesses, apiKey, searchedLocation }) => {
@@ -38,14 +38,13 @@ const GoogleMapEmbed: React.FC<GoogleMapEmbedProps> = ({ businesses, apiKey, sea
           clearInterval(checkInterval);
         }
       }, 200);
-      // Set a timeout for waiting, in case it never loads
       const waitTimeout = setTimeout(() => {
         clearInterval(checkInterval);
         if (!(window.google && window.google.maps)) {
             console.error("Google Maps API did not load after waiting for existing script.");
             setScriptError("Google Maps API did not load. Check browser console for details.");
         }
-      }, 5000); // Wait for 5 seconds
+      }, 5000);
       return () => {
         clearInterval(checkInterval);
         clearTimeout(waitTimeout);
@@ -57,9 +56,8 @@ const GoogleMapEmbed: React.FC<GoogleMapEmbedProps> = ({ businesses, apiKey, sea
     script.id = 'google-maps-script';
     script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=marker&callback=initMapEmbed`;
     script.async = true;
-    script.defer = true; // defer is important
+    script.defer = true;
     
-    // Attach a global callback function for the Maps API
     (window as any).initMapEmbed = () => {
       console.log("Google Maps API script loaded and callback executed.");
       setApiLoaded(true);
@@ -68,20 +66,14 @@ const GoogleMapEmbed: React.FC<GoogleMapEmbedProps> = ({ businesses, apiKey, sea
     script.onerror = () => {
       console.error("Google Maps script failed to load. Check src, network, or API key configuration.");
       setScriptError("Failed to load Google Maps script. Check API key and network.");
-      delete (window as any).initMapEmbed; // Clean up callback
+      delete (window as any).initMapEmbed;
     };
     document.head.appendChild(script);
 
     return () => {
-      // Cleanup the global callback function when the component unmounts
       delete (window as any).initMapEmbed;
-      const existingScript = document.getElementById('google-maps-script');
-      if (existingScript && !apiLoaded) {
-        // If component unmounts before script loads, and we added it, consider removing.
-        // existingScript.remove(); // Cautious with removal if other instances might exist.
-      }
     };
-  }, [apiKey]); // Depend on apiKey
+  }, [apiKey]);
 
   useEffect(() => {
     if (apiLoaded && mapRef.current && !map) {
@@ -90,14 +82,12 @@ const GoogleMapEmbed: React.FC<GoogleMapEmbedProps> = ({ businesses, apiKey, sea
       let centerLng = -74.0060;
       let zoomLevel = 12;
 
-      const validBusinesses = businesses.filter(b => b.latitude != null && b.longitude != null);
+      const validBusinessesForInitialCenter = businesses.filter(b => b.latitude != null && b.longitude != null);
 
-      if (validBusinesses.length > 0) {
-        centerLat = validBusinesses[0].latitude!;
-        centerLng = validBusinesses[0].longitude!;
-        if (validBusinesses.length === 1) {
-            zoomLevel = 15;
-        }
+      if (validBusinessesForInitialCenter.length > 0) {
+        centerLat = validBusinessesForInitialCenter[0].latitude!;
+        centerLng = validBusinessesForInitialCenter[0].longitude!;
+         // Initial zoom will be adjusted by fitBounds later if there are markers
       } else if (searchedLocation) {
         centerLat = searchedLocation.lat;
         centerLng = searchedLocation.lng;
@@ -116,18 +106,17 @@ const GoogleMapEmbed: React.FC<GoogleMapEmbedProps> = ({ businesses, apiKey, sea
         setScriptError("Error initializing Google Map. See console for details.");
       }
     }
-  }, [apiLoaded, businesses, map, searchedLocation]); // mapRef is stable, no need to list
+  }, [apiLoaded, map, searchedLocation, businesses]); // Added businesses to deps for initial centering logic
 
   useEffect(() => {
-    // Clear existing markers
-    markers.forEach(marker => marker.map = null); // AdvancedMarkerElement uses .map = null
-    setMarkers([]); // Clear the state
+    markers.forEach(marker => marker.map = null);
+    setMarkers([]);
 
     if (map && businesses.length > 0) {
       console.log(`Updating markers for ${businesses.length} businesses.`);
-      const newMarkers: google.maps.marker.AdvancedMarkerElement[] = [];
+      const newMarkersArray: google.maps.marker.AdvancedMarkerElement[] = [];
       const bounds = new google.maps.LatLngBounds();
-      let validMarkers = 0;
+      let validMarkersCount = 0;
 
       businesses.forEach((business) => {
         if (business.latitude != null && business.longitude != null) {
@@ -139,20 +128,25 @@ const GoogleMapEmbed: React.FC<GoogleMapEmbedProps> = ({ businesses, apiKey, sea
               title: business.name,
             });
 
+            const infoWindowContent = 
+              `<div style="color: black; font-family: sans-serif; padding: 5px;">` +
+              `<strong style="font-size: 1.1em;">${business.name}</strong><br>` +
+              `${business.address || ''}` +
+              `${business.phoneNumber ? `<br>Phone: ${business.phoneNumber}` : ''}` +
+              `${business.website ? `<br><a href="${business.website.startsWith('http') ? business.website : `https://${business.website}`}" target="_blank" rel="noopener noreferrer" style="color: #E41F1B;">Website</a>` : ''}` +
+              `</div>`;
+
             const infoWindow = new google.maps.InfoWindow({
-              content: `<div style="color: black;"><strong>${business.name}</strong><br>${business.address}</div>`,
-              // AdvancedMarkerElement does not directly support infoWindow in the same way as classic markers.
-              // InfoWindows need to be managed and opened in relation to the map and marker's pixel position or LatLng.
+              content: infoWindowContent,
             });
-            // For AdvancedMarkerElement, add listener directly to the marker instance
+            
             marker.addListener('click', () => {
-                // Close other info windows if you have a reference to them
-                infoWindow.open(map, marker); // infoWindow.open(map, marker) still works for AdvancedMarkerElement
+                infoWindow.open({ anchor: marker, map });
             });
 
-            newMarkers.push(marker);
+            newMarkersArray.push(marker);
             bounds.extend(position);
-            validMarkers++;
+            validMarkersCount++;
           } catch (e) {
             console.error("Error creating marker for business:", business.name, e);
           }
@@ -160,24 +154,35 @@ const GoogleMapEmbed: React.FC<GoogleMapEmbedProps> = ({ businesses, apiKey, sea
           console.warn("Skipping marker for business with no coordinates:", business.name);
         }
       });
-      setMarkers(newMarkers);
+      setMarkers(newMarkersArray);
 
-      if (validMarkers > 0 && map.getBounds() !== undefined) { // Check if map has bounds (fully initialized)
-        if (validMarkers > 1) {
-          console.log("Fitting map to bounds of multiple markers.");
-          map.fitBounds(bounds);
-        } else {
-          console.log("Centering map on single marker.");
+      if (validMarkersCount > 0) {
+        if (validMarkersCount === 1) {
           map.setCenter(bounds.getCenter());
-          map.setZoom(15);
+          map.setZoom(15); 
+          console.log("Single marker, centering and zooming to 15.");
+        } else {
+          map.fitBounds(bounds);
+          console.log("Multiple markers, fitting map to bounds.");
         }
-      } else if (validMarkers === 0) {
-          console.log("No valid markers to display. Map will remain at initial center/zoom.");
+      } else {
+        console.log("No valid markers to display. Map will remain at initial/default center/zoom.");
+         // If no markers but searchedLocation exists, ensure map centers there.
+        if (searchedLocation) {
+            map.setCenter({ lat: searchedLocation.lat, lng: searchedLocation.lng });
+            map.setZoom(12); // A reasonable zoom level for a general location
+        }
       }
     } else if (map && businesses.length === 0) {
         console.log("No businesses to display. Clearing markers.");
+        // If no businesses but searchedLocation exists, center map on searchedLocation
+        if (searchedLocation) {
+            map.setCenter({ lat: searchedLocation.lat, lng: searchedLocation.lng });
+            map.setZoom(12);
+            console.log("No businesses, centering on searched location.");
+        }
     }
-  }, [map, businesses]);
+  }, [map, businesses, searchedLocation]); // Added searchedLocation to re-evaluate bounds/center
 
 
   if (!apiKey) {
@@ -188,9 +193,8 @@ const GoogleMapEmbed: React.FC<GoogleMapEmbedProps> = ({ businesses, apiKey, sea
     return <div className="p-4 text-destructive-foreground bg-destructive rounded-md">Error with Google Maps: {scriptError} Check the browser console for more details.</div>;
   }
 
-  return <div ref={mapRef} className="w-full h-full min-h-[400px] md:min-h-0 rounded-lg shadow-md" />;
+  return <div ref={mapRef} className="w-full h-full min-h-[400px] rounded-lg shadow-md" />; // Removed md:min-h-0
 };
 
 export default GoogleMapEmbed;
-
     
