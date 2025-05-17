@@ -19,24 +19,45 @@ export default function MarketAnalyzerPage() {
   const [hasSearched, setHasSearched] = useState(false);
   const { toast } = useToast();
   const [showGreeting, setShowGreeting] = useState(true);
+  const [searchedLocationCenter, setSearchedLocationCenter] = useState<{lat: number, lng: number} | undefined>(undefined);
 
+
+  // IMPORTANT: This key is read at build time for server components,
+  // but for client components, it needs to be available when the component mounts.
+  // Ensure your .env.local is set up and you've RESTARTED your dev server.
   const mapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
 
   useEffect(() => {
+    if (!mapsApiKey) {
+        console.warn("NEXT_PUBLIC_GOOGLE_MAPS_API_KEY is not set in .env.local or not available to the client. Map functionality will be limited.");
+    }
     const timer = setTimeout(() => {
       setShowGreeting(false);
-    }, 100);
+    }, 100); // Short delay to allow initial render without greeting if a search is pending
     return () => clearTimeout(timer);
-  }, []);
+  }, [mapsApiKey]);
 
   const handleSearch = async (data: { category: string; location: string; radius: number }) => {
     setIsLoading(true);
     setError(null);
     setHasSearched(true);
-    setShowGreeting(false);
+    setShowGreeting(false); // Hide greeting on search
     try {
+      // For map centering, ideally, we'd geocode the "location" input here.
+      // For simplicity, the map will center on the first result or a default.
+      // We could enhance this later by geocoding `data.location`.
       const searchResults = await searchBusinessesAction(data);
       setResults(searchResults);
+      
+      // If results have coordinates, set a center for the map
+      const firstResultWithCoords = searchResults.find(r => r.latitude != null && r.longitude != null);
+      if (firstResultWithCoords) {
+        setSearchedLocationCenter({ lat: firstResultWithCoords.latitude!, lng: firstResultWithCoords.longitude! });
+      } else {
+        // Potentially geocode data.location here to set a map center even if no results
+        setSearchedLocationCenter(undefined); // Or a default like { lat: 0, lng: 0 } if you geocode `data.location`
+      }
+
       toast({
         title: "Search Complete",
         description: `Found ${searchResults.length} businesses.`,
@@ -45,6 +66,7 @@ export default function MarketAnalyzerPage() {
       const errorMessage = err instanceof Error ? err.message : "An unknown error occurred during the search.";
       setError(errorMessage);
       setResults([]);
+      setSearchedLocationCenter(undefined);
       toast({
         variant: "destructive",
         title: "Search Failed",
@@ -63,7 +85,7 @@ export default function MarketAnalyzerPage() {
             src="/searchkings-crown-stylized.png"
             alt="SearchKings Crown Logo"
             width={56}
-            height={30}
+            height={30} 
             className="w-14 h-auto md:w-16 md:h-auto"
           />
           <h1 className="text-3xl md:text-4xl font-extrabold text-primary tracking-tight">
@@ -93,7 +115,7 @@ export default function MarketAnalyzerPage() {
               <CardTitle className="text-2xl text-destructive">Search Error</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-destructive-foreground_custom_darker_shade_if_needed_else_default">
+              <p className="text-destructive-foreground">
                 {error} Please try adjusting your search terms or try again later.
               </p>
             </CardContent>
@@ -104,7 +126,7 @@ export default function MarketAnalyzerPage() {
           <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8 items-start">
             <div className="md:col-span-2 h-[500px] md:h-auto md:sticky md:top-6">
               {mapsApiKey ? (
-                <GoogleMapEmbed businesses={results} apiKey={mapsApiKey} />
+                <GoogleMapEmbed businesses={results} apiKey={mapsApiKey} searchedLocation={searchedLocationCenter} />
               ) : (
                 <Card className="h-full flex flex-col items-center justify-center text-center">
                   <CardHeader>
@@ -113,7 +135,7 @@ export default function MarketAnalyzerPage() {
                   </CardHeader>
                   <CardContent>
                     <p className="text-muted-foreground">
-                      Google Maps API Key is not configured. Please set <code className="bg-muted px-1 py-0.5 rounded">NEXT_PUBLIC_GOOGLE_MAPS_API_KEY</code> in your environment.
+                      Google Maps API Key is not configured. Please set <code className="bg-muted px-1 py-0.5 rounded">NEXT_PUBLIC_GOOGLE_MAPS_API_KEY</code> in your environment and restart your server.
                     </p>
                   </CardContent>
                 </Card>
@@ -145,3 +167,5 @@ export default function MarketAnalyzerPage() {
     </div>
   );
 }
+
+    
