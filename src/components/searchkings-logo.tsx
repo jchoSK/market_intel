@@ -38,7 +38,7 @@ export function SearchKingsLogo(props: SVGProps<SVGSVGElement>) {
         <linearGradient
             id="paint1_linear_crown"
             x1="28"
-            y1="32.8"
+            y1="32.8" 
             x2="28"
             y2="40.2"
             gradientUnits="userSpaceOnUse"
