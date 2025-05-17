@@ -11,7 +11,8 @@ const searchSchema = z.object({
 });
 
 const GOOGLE_PLACES_API_KEY = process.env.GOOGLE_PLACES_API_KEY;
-const PLACES_API_BASE_URL = "https://maps.googleapis.com/maps/api/place/textsearch/json";
+const TEXT_SEARCH_API_URL = "https://maps.googleapis.com/maps/api/place/textsearch/json";
+const PLACE_DETAILS_API_URL_BASE = "https://maps.googleapis.com/maps/api/place/details/json";
 
 export async function searchBusinessesAction(
   params: { category: string; location: string; radius: number }
@@ -32,29 +33,17 @@ export async function searchBusinessesAction(
   const query = `${category} in ${location}`;
   const radiusInMeters = radius * 1609.34; // Convert miles to meters
   
-  // Explicitly request the fields we need to ensure they are returned by Text Search.
-  // Note: While Text Search *can* return these, it's not always guaranteed for all results.
-  // For guaranteed details, a Place Details request per place_id would be needed.
-  const fieldsToRequest = [
-    "place_id",
-    "name",
-    "formatted_address",
-    "international_phone_number", // For phone number
-    "website",                    // For website
-    "rating",
-    "user_ratings_total"          // For total review count
-  ].join(",");
-
-  const apiUrl = `${PLACES_API_BASE_URL}?query=${encodeURIComponent(query)}&radius=${radiusInMeters}&fields=${encodeURIComponent(fieldsToRequest)}&key=${GOOGLE_PLACES_API_KEY}`;
+  // Fields for the initial Text Search (basic info + place_id)
+  const textSearchFields = "place_id,name,formatted_address,rating,user_ratings_total";
+  const textSearchApiUrl = `${TEXT_SEARCH_API_URL}?query=${encodeURIComponent(query)}&radius=${radiusInMeters}&fields=${encodeURIComponent(textSearchFields)}&key=${GOOGLE_PLACES_API_KEY}`;
 
   try {
-    const response = await fetch(apiUrl);
+    const response = await fetch(textSearchApiUrl);
     const data = await response.json();
 
     if (!response.ok || (data.status !== "OK" && data.status !== "ZERO_RESULTS")) {
-      console.error("Google Places API Error:", data.status, data.error_message, data.info_messages);
-      // Provide a more user-friendly error if available
-      let errorMessage = "Failed to fetch data from Google Places API.";
+      console.error("Google Places API Error (Text Search):", data.status, data.error_message, data.info_messages);
+      let errorMessage = "Failed to fetch data from Google Places API (Text Search).";
       if (data.error_message) {
         errorMessage = data.error_message;
       } else if (data.status) {
@@ -63,24 +52,51 @@ export async function searchBusinessesAction(
       throw new Error(errorMessage);
     }
 
-    if (data.status === "ZERO_RESULTS") {
+    if (data.status === "ZERO_RESULTS" || !data.results || data.results.length === 0) {
       return [];
     }
 
-    return data.results.map((place: any): Business => ({
-      id: place.place_id, // This is the place_id
+    // Map initial results and prepare for Place Details calls
+    const businessesFromTextSearch = data.results.map((place: any) => ({
+      id: place.place_id,
       name: place.name,
       address: place.formatted_address,
-      phoneNumber: place.international_phone_number, // Mapped from API
-      website: place.website,                       // Mapped from API
       rating: place.rating,
       reviewsCount: place.user_ratings_total,
+      phoneNumber: undefined, // To be filled by Place Details
+      website: undefined,     // To be filled by Place Details
     }));
+
+    // Fetch details (phone number, website) for each business
+    const detailedBusinesses = await Promise.all(
+      businessesFromTextSearch.map(async (baseBusiness: Omit<Business, 'phoneNumber' | 'website'> & { phoneNumber?: string; website?: string }) => {
+        const placeDetailsFieldsToFetch = "place_id,international_phone_number,website";
+        const placeDetailsUrl = `${PLACE_DETAILS_API_URL_BASE}?place_id=${baseBusiness.id}&fields=${encodeURIComponent(placeDetailsFieldsToFetch)}&key=${GOOGLE_PLACES_API_KEY}`;
+        
+        let augmentedBusiness: Business = { ...baseBusiness } as Business; // Assert type initially
+
+        try {
+          const detailsResponse = await fetch(placeDetailsUrl);
+          const detailsData = await detailsResponse.json();
+
+          if (detailsData.status === "OK" && detailsData.result) {
+            augmentedBusiness.phoneNumber = detailsData.result.international_phone_number;
+            augmentedBusiness.website = detailsData.result.website;
+          } else {
+            console.warn(`Could not fetch details for place_id ${baseBusiness.id}: ${detailsData.status} - ${detailsData.error_message || ''}`);
+          }
+        } catch (detailsError) {
+          console.error(`Error fetching details for place_id ${baseBusiness.id}:`, detailsError);
+        }
+        return augmentedBusiness;
+      })
+    );
+    
+    return detailedBusinesses;
 
   } catch (error) {
     console.error("Error in searchBusinessesAction:", error);
     if (error instanceof Error) {
-        // Try to give a more specific error message if it's a known API issue
         if (error.message.includes("API key not valid")) {
              throw new Error("Invalid Google Places API key. Please check your .env.local file and Google Cloud Console settings.");
         }
