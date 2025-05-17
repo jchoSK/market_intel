@@ -5,9 +5,11 @@ import { Ghost } from 'lucide-react';
 
 interface SearchResultsProps {
   businesses: Business[];
+  onBusinessSelect?: (businessId: string) => void;
+  selectedBusinessId?: string | null;
 }
 
-export default function SearchResults({ businesses }: SearchResultsProps) {
+export default function SearchResults({ businesses, onBusinessSelect, selectedBusinessId }: SearchResultsProps) {
   if (businesses.length === 0) {
     return (
       <div className="text-center py-10 bg-card rounded-lg shadow">
@@ -27,9 +29,15 @@ export default function SearchResults({ businesses }: SearchResultsProps) {
       </h2>
       <div className="space-y-4">
         {businesses.map((business) => (
-          <BusinessCard key={business.id} business={business} />
+          <BusinessCard 
+            key={business.id} 
+            business={business} 
+            onSelect={onBusinessSelect} 
+            isSelected={selectedBusinessId === business.id}
+          />
         ))}
       </div>
     </section>
   );
 }
+

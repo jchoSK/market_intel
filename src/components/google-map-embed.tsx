@@ -8,15 +8,26 @@ interface GoogleMapEmbedProps {
   businesses: Business[];
   apiKey: string;
   searchedLocation?: { lat: number; lng: number };
+  selectedBusinessIdFromList?: string | null;
+  onMarkerClickedOnMap?: (businessId: string) => void;
 }
 
-const GoogleMapEmbed: React.FC<GoogleMapEmbedProps> = ({ businesses, apiKey, searchedLocation }) => {
+const GoogleMapEmbed: React.FC<GoogleMapEmbedProps> = ({ 
+  businesses, 
+  apiKey, 
+  searchedLocation,
+  selectedBusinessIdFromList,
+  onMarkerClickedOnMap 
+}) => {
   const mapRef = useRef<HTMLDivElement>(null);
   const [map, setMap] = useState<google.maps.Map | null>(null);
-  const [markers, setMarkers] = useState<google.maps.marker.AdvancedMarkerElement[]>([]);
+  
+  // Use a ref to store marker and infowindow instances, mapped by business.id
+  const businessMapElementsRef = useRef<Map<string, { marker: google.maps.marker.AdvancedMarkerElement; infoWindow: google.maps.InfoWindow }>>(new Map());
+  const activeInfoWindowRef = useRef<google.maps.InfoWindow | null>(null);
+
   const [apiLoaded, setApiLoaded] = useState(false);
   const [scriptError, setScriptError] = useState<string | null>(null);
-  const activeInfoWindowRef = useRef<google.maps.InfoWindow | null>(null);
 
   useEffect(() => {
     if (!apiKey) {
@@ -51,29 +62,29 @@ const GoogleMapEmbed: React.FC<GoogleMapEmbedProps> = ({ businesses, apiKey, sea
     
     const script = document.createElement('script');
     script.id = 'google-maps-script';
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=marker&callback=initMapEmbed`;
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=marker&callback=initMapEmbedGlobally`;
     script.async = true;
     script.defer = true;
     
-    (window as any).initMapEmbed = () => {
+    (window as any).initMapEmbedGlobally = () => {
       setApiLoaded(true);
     };
 
     script.onerror = () => {
       console.error("Google Maps script failed to load. Check src, network, or API key configuration.");
       setScriptError("Failed to load Google Maps script. Check API key and network.");
-      delete (window as any).initMapEmbed;
+      delete (window as any).initMapEmbedGlobally;
     };
     document.head.appendChild(script);
 
     return () => {
-      delete (window as any).initMapEmbed;
+      delete (window as any).initMapEmbedGlobally;
     };
   }, [apiKey]);
 
   useEffect(() => {
     if (apiLoaded && mapRef.current && !map) {
-      let centerLat = 40.7128; // Default to NYC
+      let centerLat = 40.7128; 
       let centerLng = -74.0060;
       let zoomLevel = 12;
 
@@ -102,22 +113,23 @@ const GoogleMapEmbed: React.FC<GoogleMapEmbedProps> = ({ businesses, apiKey, sea
   }, [apiLoaded, map, searchedLocation, businesses]);
 
   useEffect(() => {
-    // Clear existing markers from the map
-    markers.forEach(marker => marker.map = null);
-    
-    // Close any InfoWindow that might be open from a previous set of markers
-    if (activeInfoWindowRef.current) {
-      activeInfoWindowRef.current.close();
-      activeInfoWindowRef.current = null;
-    }
+    if (!map) return;
 
-    if (map && businesses.length > 0) {
-      const newMarkersArray: google.maps.marker.AdvancedMarkerElement[] = [];
+    // Clear previous markers from map and internal ref
+    businessMapElementsRef.current.forEach(({ marker }) => {
+      marker.map = null;
+    });
+    businessMapElementsRef.current.clear();
+    
+    activeInfoWindowRef.current?.close();
+    activeInfoWindowRef.current = null;
+
+    if (businesses.length > 0) {
       const bounds = new google.maps.LatLngBounds();
       let validMarkersCount = 0;
 
       businesses.forEach((business) => {
-        if (business.latitude != null && business.longitude != null) {
+        if (business.latitude != null && business.longitude != null && business.id) {
           const position = { lat: business.latitude, lng: business.longitude };
           try {
             const marker = new google.maps.marker.AdvancedMarkerElement({
@@ -144,57 +156,70 @@ const GoogleMapEmbed: React.FC<GoogleMapEmbedProps> = ({ businesses, apiKey, sea
               `${websiteLink}` +
               `</div>`;
 
-            // Each marker gets its own InfoWindow instance
             const infoWindow = new google.maps.InfoWindow({
               content: infoWindowContent,
               maxWidth: 300,
             });
             
             marker.addListener('click', () => {
-                // Close the previously active InfoWindow, if any
-                if (activeInfoWindowRef.current) {
-                  activeInfoWindowRef.current.close();
-                }
-                // Open the new InfoWindow
+                activeInfoWindowRef.current?.close();
                 infoWindow.open({ anchor: marker, map });
-                // Set the current InfoWindow as active
                 activeInfoWindowRef.current = infoWindow;
+                onMarkerClickedOnMap?.(business.id);
             });
 
-            newMarkersArray.push(marker);
+            businessMapElementsRef.current.set(business.id, { marker, infoWindow });
             bounds.extend(position);
             validMarkersCount++;
           } catch (e) {
             console.error("Error creating marker for business:", business.name, e);
           }
         } else {
-          console.warn("Skipping marker for business with no coordinates:", business.name);
+          console.warn("Skipping marker for business with no coordinates or ID:", business.name);
         }
       });
-      setMarkers(newMarkersArray); // Update the state with the new markers
 
       if (validMarkersCount > 0) {
-        if (validMarkersCount === 1 && newMarkersArray[0].position) {
-          map.setCenter(newMarkersArray[0].position);
+        if (validMarkersCount === 1 && businessMapElementsRef.current.values().next().value?.marker?.position) {
+          map.setCenter(businessMapElementsRef.current.values().next().value.marker.position!);
           map.setZoom(15); 
         } else {
           map.fitBounds(bounds);
         }
-      } else {
-        if (searchedLocation) {
-            map.setCenter({ lat: searchedLocation.lat, lng: searchedLocation.lng });
-            map.setZoom(12); 
+      } else if (searchedLocation) {
+        map.setCenter({ lat: searchedLocation.lat, lng: searchedLocation.lng });
+        map.setZoom(12);
+      }
+    } else if (searchedLocation) {
+        map.setCenter({ lat: searchedLocation.lat, lng: searchedLocation.lng });
+        map.setZoom(12);
+    }
+  }, [map, businesses, searchedLocation, onMarkerClickedOnMap]);
+
+
+  useEffect(() => {
+    if (map && selectedBusinessIdFromList) {
+      const targetElement = businessMapElementsRef.current.get(selectedBusinessIdFromList);
+      if (targetElement) {
+        activeInfoWindowRef.current?.close(); 
+        targetElement.infoWindow.open({ anchor: targetElement.marker, map });
+        activeInfoWindowRef.current = targetElement.infoWindow;
+        
+        const markerPosition = targetElement.marker.position;
+        if(markerPosition){
+          map.panTo(markerPosition);
+          // Only zoom if current zoom is too far out, or consider not zooming to respect user's zoom
+           if (map.getZoom()! < 14) {
+             map.setZoom(15);
+           }
         }
       }
-    } else if (map && businesses.length === 0) {
-        // No businesses, clear markers from state (already done by forEach above if markers existed)
-        setMarkers([]);
-        if (searchedLocation) {
-            map.setCenter({ lat: searchedLocation.lat, lng: searchedLocation.lng });
-            map.setZoom(12);
-        }
+    } else if (map && !selectedBusinessIdFromList) {
+      // If nothing is selected from list, close the active info window
+      activeInfoWindowRef.current?.close();
+      activeInfoWindowRef.current = null;
     }
-  }, [map, businesses, searchedLocation]);
+  }, [selectedBusinessIdFromList, map]);
 
 
   if (!apiKey) {

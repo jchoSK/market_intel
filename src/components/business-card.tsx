@@ -4,9 +4,12 @@
 import type { Business } from "@/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Star, StarHalf, Building } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface BusinessCardProps {
   business: Business;
+  onSelect?: (businessId: string) => void;
+  isSelected?: boolean;
 }
 
 const renderStars = (rating?: number) => {
@@ -32,18 +35,40 @@ const renderStars = (rating?: number) => {
   );
 };
 
-export default function BusinessCard({ business }: BusinessCardProps) {
+export default function BusinessCard({ business, onSelect, isSelected }: BusinessCardProps) {
   const gbpUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(business.name)}&query_place_id=${business.id}`;
 
+  const handleCardClick = () => {
+    if (onSelect) {
+      onSelect(business.id);
+    }
+  };
+
   return (
-    <Card className="flex flex-col h-full shadow-md hover:shadow-lg transition-shadow duration-200">
+    <Card 
+      className={cn(
+        "flex flex-col h-full shadow-md hover:shadow-lg transition-shadow duration-200",
+        onSelect && "cursor-pointer",
+        isSelected && "ring-2 ring-primary shadow-xl"
+      )}
+      onClick={handleCardClick}
+      tabIndex={onSelect ? 0 : -1}
+      onKeyDown={(e) => {
+        if (onSelect && (e.key === 'Enter' || e.key === ' ')) {
+          handleCardClick();
+        }
+      }}
+      aria-pressed={isSelected}
+      aria-label={`Select business: ${business.name}`}
+    >
       <CardHeader className="pb-2">
-        <CardTitle className="text-xl text-primary">
+        <CardTitle className="text-xl">
           <a
             href={gbpUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="hover:underline flex items-center"
+            className="text-primary hover:underline flex items-center"
+            onClick={(e) => e.stopPropagation()} // Prevents card click when link is clicked
             aria-label={`View ${business.name} on Google Maps`}
           >
             <Building className="mr-2 h-5 w-5 text-primary/80 shrink-0" />
@@ -71,6 +96,7 @@ export default function BusinessCard({ business }: BusinessCardProps) {
               target="_blank" 
               rel="noopener noreferrer" 
               className="text-primary hover:underline truncate"
+              onClick={(e) => e.stopPropagation()} // Prevents card click when link is clicked
               aria-label={`Visit website for ${business.name}`}
             >
               Website
@@ -91,7 +117,6 @@ export default function BusinessCard({ business }: BusinessCardProps) {
             </p>
         )}
       </CardContent>
-      {/* CardFooter can be used for future additions if needed */}
     </Card>
   );
 }

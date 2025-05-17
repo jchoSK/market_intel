@@ -20,7 +20,7 @@ export default function MarketAnalyzerPage() {
   const { toast } = useToast();
   const [showGreeting, setShowGreeting] = useState(true);
   const [searchedLocationCenter, setSearchedLocationCenter] = useState<{lat: number, lng: number} | undefined>(undefined);
-
+  const [selectedBusinessId, setSelectedBusinessId] = useState<string | null>(null);
 
   const mapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
 
@@ -39,6 +39,7 @@ export default function MarketAnalyzerPage() {
     setError(null);
     setHasSearched(true);
     setShowGreeting(false);
+    setSelectedBusinessId(null); // Reset selected business on new search
     try {
       const searchResults = await searchBusinessesAction(data);
       setResults(searchResults);
@@ -47,9 +48,6 @@ export default function MarketAnalyzerPage() {
       if (firstResultWithCoords) {
         setSearchedLocationCenter({ lat: firstResultWithCoords.latitude!, lng: firstResultWithCoords.longitude! });
       } else {
-        // Potentially geocode data.location here if you have a geocoding function
-        // For now, if no results have coords, map won't specifically center on search,
-        // but GoogleMapEmbed might use its own default or center on existing markers.
         setSearchedLocationCenter(undefined); 
       }
 
@@ -70,6 +68,14 @@ export default function MarketAnalyzerPage() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleBusinessSelectFromList = (businessId: string) => {
+    setSelectedBusinessId(businessId);
+  };
+
+  const handleMapMarkerClick = (businessId: string) => {
+    setSelectedBusinessId(businessId);
   };
 
   return (
@@ -119,9 +125,15 @@ export default function MarketAnalyzerPage() {
 
         {!isLoading && !error && hasSearched && (
           <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8 items-start">
-            <div className="md:col-span-2 h-[500px] md:h-[600px] md:sticky md:top-6"> {/* Changed md:h-auto to md:h-[600px] */}
+            <div className="md:col-span-2 h-[500px] md:h-[600px] md:sticky md:top-6">
               {mapsApiKey ? (
-                <GoogleMapEmbed businesses={results} apiKey={mapsApiKey} searchedLocation={searchedLocationCenter} />
+                <GoogleMapEmbed 
+                  businesses={results} 
+                  apiKey={mapsApiKey} 
+                  searchedLocation={searchedLocationCenter}
+                  selectedBusinessIdFromList={selectedBusinessId}
+                  onMarkerClickedOnMap={handleMapMarkerClick} 
+                />
               ) : (
                 <Card className="h-full flex flex-col items-center justify-center text-center">
                   <CardHeader>
@@ -137,7 +149,7 @@ export default function MarketAnalyzerPage() {
               )}
             </div>
             <div className="md:col-span-1 max-h-[calc(100vh-10rem)] overflow-y-auto">
-              <SearchResults businesses={results} />
+              <SearchResults businesses={results} onBusinessSelect={handleBusinessSelectFromList} selectedBusinessId={selectedBusinessId} />
             </div>
           </div>
         )}
