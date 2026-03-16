@@ -3,8 +3,9 @@
 
 import type { Business } from "@/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Star, StarHalf, Building, ExternalLink, SearchCheck, SearchSlash } from "lucide-react";
+import { Star, StarHalf, Building, ExternalLink, SearchCheck, SearchSlash, User, Users, DollarSign, Tag, Info, Home, Briefcase } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Badge } from "@/components/ui/badge";
 
 interface BusinessCardProps {
   business: Business;
@@ -22,15 +23,14 @@ const renderStars = (rating?: number) => {
   const effectivelyFullStar = rating % 1 >= 0.75;
   const displayFullStars = fullStars + (effectivelyFullStar ? 1 : 0);
   const displayHalfStar = halfStar && !effectivelyFullStar;
-
   const emptyStars = 5 - displayFullStars - (displayHalfStar ? 1 : 0);
 
   return (
     <div className="flex items-center">
-      {[...Array(displayFullStars)].map((_, i) => <Star key={`full-${i}`} className="h-5 w-5 fill-primary text-primary" />)}
-      {displayHalfStar && <StarHalf key="half" className="h-5 w-5 fill-primary text-primary" />}
-      {[...Array(Math.max(0, emptyStars))].map((_, i) => <Star key={`empty-${i}`} className="h-5 w-5 text-primary/50" />)}
-      <span className="ml-2 text-sm font-medium text-foreground">{rating.toFixed(1)}</span>
+      {[...Array(displayFullStars)].map((_, i) => <Star key={`full-${i}`} className="h-4 w-4 fill-primary text-primary" />)}
+      {displayHalfStar && <StarHalf key="half" className="h-4 w-4 fill-primary text-primary" />}
+      {[...Array(Math.max(0, emptyStars))].map((_, i) => <Star key={`empty-${i}`} className="h-4 w-4 text-primary/50" />)}
+      <span className="ml-2 text-xs font-medium text-foreground">{rating.toFixed(1)}</span>
     </div>
   );
 };
@@ -38,116 +38,99 @@ const renderStars = (rating?: number) => {
 export default function BusinessCard({ business, onSelect, isSelected }: BusinessCardProps) {
   const gbpUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(business.name || '')}&query_place_id=${business.id}`;
 
-  const handleCardClick = () => {
-    if (onSelect && business.id) {
-      onSelect(business.id);
-    }
-  };
-
   return (
     <Card 
       className={cn(
-        "flex flex-col h-full shadow-md hover:shadow-lg transition-shadow duration-200",
+        "flex flex-col h-full shadow-md hover:shadow-lg transition-all duration-200",
         onSelect && "cursor-pointer",
-        isSelected && "ring-2 ring-primary shadow-xl"
+        isSelected && "ring-2 ring-primary shadow-xl scale-[1.01]"
       )}
-      onClick={handleCardClick}
-      tabIndex={onSelect ? 0 : -1}
-      onKeyDown={(e) => {
-        if (onSelect && (e.key === 'Enter' || e.key === ' ')) {
-          handleCardClick();
-        }
-      }}
-      aria-pressed={isSelected}
-      aria-label={`Select business: ${business.name}`}
+      onClick={() => onSelect?.(business.id)}
     >
-      <CardHeader className="pb-2">
-        <CardTitle className="text-xl">
-          <a
-            href={gbpUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-primary hover:underline flex items-center"
-            onClick={(e) => e.stopPropagation()} 
-            aria-label={`View ${business.name} on Google Maps`}
-          >
-            <Building className="mr-2 h-5 w-5 text-primary/80 shrink-0" />
-            <span className="truncate">{business.name || "Unnamed Business"}</span>
-          </a>
-        </CardTitle>
+      <CardHeader className="pb-2 space-y-1">
+        <div className="flex justify-between items-start gap-2">
+          <CardTitle className="text-lg leading-tight truncate">
+            {business.name || "Unnamed Business"}
+          </CardTitle>
+          {business.research?.isResidential !== undefined && (
+            <Badge variant="outline" className="shrink-0">
+              {business.research.isResidential ? <Home className="h-3 w-3 mr-1" /> : <Briefcase className="h-3 w-3 mr-1" />}
+              {business.research.isResidential ? "Residential" : "Commercial"}
+            </Badge>
+          )}
+        </div>
+        <p className="text-xs text-muted-foreground truncate">{business.address}</p>
       </CardHeader>
-      <CardContent className="flex-grow space-y-1 pt-2">
-        {business.address && (
-          <p className="text-sm text-muted-foreground mb-2">{business.address}</p>
-        )}
-        
-        {business.phoneNumber && (
-          <div className="text-sm mb-1">
-            <span className="font-medium text-foreground">Phone: </span>
-            <span className="text-muted-foreground truncate">{business.phoneNumber}</span>
-          </div>
-        )}
-
-        {business.website && (
-          <div className="text-sm mb-2">
-            <span className="font-medium text-foreground">Website: </span>
-            <a 
-              href={business.website.startsWith('http') ? business.website : `https://${business.website}`} 
-              target="_blank" 
-              rel="noopener noreferrer" 
-              className="text-primary hover:underline truncate inline-flex items-center"
-              onClick={(e) => e.stopPropagation()}
-              aria-label={`Visit website for ${business.name}`}
-            >
-              Website <ExternalLink className="ml-1 h-3 w-3" />
-            </a>
-          </div>
-        )}
-
-        <div className="flex items-center space-x-2 pt-1">
+      <CardContent className="space-y-4 pt-0">
+        <div className="flex items-center space-x-2">
           {renderStars(business.rating)}
-          {typeof business.reviewsCount === 'number' && (
-            <span className="text-sm text-muted-foreground">({business.reviewsCount} reviews)</span>
+          {business.reviewsCount !== undefined && (
+            <span className="text-xs text-muted-foreground">({business.reviewsCount} reviews)</span>
           )}
         </div>
 
-        {business.reviewSummary?.text && (
-            <p className="mt-2 text-xs text-muted-foreground italic">
-              &quot;{business.reviewSummary.text}&quot;
+        {/* AI Research Grid */}
+        <div className="grid grid-cols-2 gap-3 p-3 bg-muted/30 rounded-lg border border-border/50">
+          <div className="space-y-1">
+            <p className="text-[10px] uppercase font-bold text-muted-foreground flex items-center">
+              <User className="h-3 w-3 mr-1" /> Owner/Exec
             </p>
-        )}
+            <p className="text-xs font-medium truncate">{business.research?.owner || 'Unknown'}</p>
+          </div>
+          <div className="space-y-1">
+            <p className="text-[10px] uppercase font-bold text-muted-foreground flex items-center">
+              <Users className="h-3 w-3 mr-1" /> Employees
+            </p>
+            <p className="text-xs font-medium">{business.research?.employeeCount || 'Unknown'}</p>
+          </div>
+          <div className="space-y-1">
+            <p className="text-[10px] uppercase font-bold text-muted-foreground flex items-center">
+              <DollarSign className="h-3 w-3 mr-1" /> Revenue
+            </p>
+            <p className="text-xs font-medium">{business.research?.revenue || 'Unknown'}</p>
+          </div>
+          <div className="space-y-1">
+            <p className="text-[10px] uppercase font-bold text-muted-foreground flex items-center">
+              <SearchCheck className="h-3 w-3 mr-1" /> Ads Status
+            </p>
+            <div className="text-xs flex items-center">
+              {business.adsInfo?.isRunningAds ? (
+                <span className="text-green-600 font-bold flex items-center"><SearchCheck className="h-3 w-3 mr-1" /> Active</span>
+              ) : business.adsInfo?.isRunningAds === false ? (
+                <span className="text-red-500 font-bold flex items-center"><SearchSlash className="h-3 w-3 mr-1" /> Inactive</span>
+              ) : (
+                <span className="text-muted-foreground">Unknown</span>
+              )}
+            </div>
+          </div>
+        </div>
 
-        {business.adsInfo && (
-          <div className="mt-2 pt-2 border-t border-border/50">
-            <p className="text-sm flex items-center">
-              <span className="font-medium text-foreground mr-1">Google Ads:</span>
-              {business.adsInfo.isRunningAds === true && (
-                <span className="text-green-600 font-semibold flex items-center">
-                  <SearchCheck className="mr-1 h-4 w-4" /> Active
-                </span>
-              )}
-              {business.adsInfo.isRunningAds === false && (
-                <span className="text-red-600 font-semibold flex items-center">
-                  <SearchSlash className="mr-1 h-4 w-4" /> Inactive
-                </span>
-              )}
-              {business.adsInfo.isRunningAds === null && (
-                <span className="text-muted-foreground">
-                  {business.adsInfo.adType || "Unknown"} 
-                </span>
-              )}
+        {/* Brands & Promos */}
+        {(business.research?.brands?.length || 0) > 0 && (
+          <div className="space-y-1">
+            <p className="text-[10px] uppercase font-bold text-muted-foreground flex items-center">
+              <Tag className="h-3 w-3 mr-1" /> Brands
             </p>
-            {business.adsInfo.isRunningAds === true && business.adsInfo.adType && business.adsInfo.adType !== "Google Ads" && (
-              <p className="text-xs text-muted-foreground">({business.adsInfo.adType})</p>
-            )}
-             {business.adsInfo.isRunningAds === null && business.adsInfo.adType && (
-              <p className="text-xs text-muted-foreground">({business.adsInfo.adType})</p>
-            )}
+            <div className="flex flex-wrap gap-1">
+              {business.research?.brands?.slice(0, 4).map((brand, i) => (
+                <Badge key={i} variant="secondary" className="text-[10px] py-0">{brand}</Badge>
+              ))}
+            </div>
           </div>
         )}
+
+        {/* Action Bar */}
+        <div className="flex items-center justify-between pt-2 border-t border-border/50">
+          <a href={gbpUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline flex items-center font-medium">
+            Google Maps <ExternalLink className="ml-1 h-3 w-3" />
+          </a>
+          {business.website && (
+            <a href={business.website} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline flex items-center font-medium">
+              Website <ExternalLink className="ml-1 h-3 w-3" />
+            </a>
+          )}
+        </div>
       </CardContent>
     </Card>
   );
 }
-
-    
