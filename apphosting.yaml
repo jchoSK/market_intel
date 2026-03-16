@@ -1,2 +1,22 @@
+# Firebase App Hosting configuration
+# https://firebase.google.com/docs/app-hosting/config
+
 runConfig:
-   maxInstances: 10
+  # Minimum instances kept warm (0 = scale to zero when idle)
+  minInstances: 0
+
+  # Maximum instances for auto-scaling
+  maxInstances: 10
+
+  # Request timeout - 10 minutes to match API route maxDuration
+  # This handles large searches with 20 businesses × 7 AI calls each
+  timeoutSeconds: 600
+
+  # CPU allocation (1 = 1 vCPU)
+  cpu: 1
+
+  # Memory allocation in MiB
+  memoryMiB: 512
+
+  # Maximum concurrent requests per instance
+  concurrency: 80

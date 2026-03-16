@@ -1,3 +1,4 @@
+
 import type { Metadata } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
 import './globals.css';
@@ -14,8 +15,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'SearchKings Market Analyzer',
-  description: 'Analyze local markets and business presence with SearchKings Market Analyzer.',
+  title: 'Market Intel - Customer Tool',
+  description: 'Analyze local markets and business presence with Market Intel - Customer Tool.',
 };
 
 export default function RootLayout({

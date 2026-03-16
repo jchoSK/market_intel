@@ -1,11 +1,45 @@
 
-"use client"; 
+"use client";
 
 import type { Business } from "@/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Star, StarHalf, Building, ExternalLink, SearchCheck, SearchSlash, User, Users, DollarSign, Tag, Info, Home, Briefcase } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { Badge } from "@/components/ui/badge";
+import { Star, StarHalf, Building, Clock, ExternalLink, SearchCheck, SearchSlash, Percent } from "lucide-react";
+import { cn, getLocalizedTextString } from "@/lib/utils";
+
+// Clean up crawl error messages for display
+const formatPromotionError = (websiteStatus: string): string => {
+  if (websiteStatus.includes('Invalid Start URL')) {
+    return 'Unable to scan website (invalid URL)';
+  }
+  if (websiteStatus.includes('422') || websiteStatus.includes('string_too_long')) {
+    return 'Scan configuration error';
+  }
+  if (websiteStatus.includes('400')) {
+    return 'Unable to scan website';
+  }
+  if (websiteStatus.includes('403') || websiteStatus.includes('Forbidden')) {
+    return 'Website blocked access';
+  }
+  if (websiteStatus.includes('404') || websiteStatus.includes('Not Found')) {
+    return 'Website not found';
+  }
+  if (websiteStatus.includes('timeout') || websiteStatus.includes('Timeout')) {
+    return 'Website scan timed out';
+  }
+  if (websiteStatus.includes('ECONNREFUSED') || websiteStatus.includes('ENOTFOUND')) {
+    return 'Unable to connect to website';
+  }
+  // For other errors, try to extract just the main message
+  if (websiteStatus.startsWith('Crawl failed:')) {
+    const errorPart = websiteStatus.replace('Crawl failed:', '').trim();
+    // If it's still too long/technical, simplify it
+    if (errorPart.length > 50 || errorPart.includes('{')) {
+      return 'Website scan failed';
+    }
+    return `Scan failed: ${errorPart}`;
+  }
+  return websiteStatus;
+};
 
 interface BusinessCardProps {
   business: Business;
@@ -17,119 +51,262 @@ const renderStars = (rating?: number) => {
   if (typeof rating !== 'number' || rating < 0 || rating > 5) {
     return <span className="text-sm text-muted-foreground">No rating</span>;
   }
-  
+
   const fullStars = Math.floor(rating);
   const halfStar = rating % 1 >= 0.25 && rating % 1 < 0.75;
   const effectivelyFullStar = rating % 1 >= 0.75;
   const displayFullStars = fullStars + (effectivelyFullStar ? 1 : 0);
   const displayHalfStar = halfStar && !effectivelyFullStar;
+
   const emptyStars = 5 - displayFullStars - (displayHalfStar ? 1 : 0);
 
   return (
     <div className="flex items-center">
-      {[...Array(displayFullStars)].map((_, i) => <Star key={`full-${i}`} className="h-4 w-4 fill-primary text-primary" />)}
-      {displayHalfStar && <StarHalf key="half" className="h-4 w-4 fill-primary text-primary" />}
-      {[...Array(Math.max(0, emptyStars))].map((_, i) => <Star key={`empty-${i}`} className="h-4 w-4 text-primary/50" />)}
-      <span className="ml-2 text-xs font-medium text-foreground">{rating.toFixed(1)}</span>
+      {[...Array(displayFullStars)].map((_, i) => <Star key={`full-${i}`} className="h-5 w-5 fill-primary text-primary" />)}
+      {displayHalfStar && <StarHalf key="half" className="h-5 w-5 fill-primary text-primary" />}
+      {[...Array(Math.max(0, emptyStars))].map((_, i) => <Star key={`empty-${i}`} className="h-5 w-5 text-primary/50" />)}
+      <span className="ml-2 text-sm font-medium text-foreground">{rating.toFixed(1)}</span>
     </div>
   );
 };
 
+const formatDisplayUrl = (url?: string): string => {
+  if (!url) return 'Not Available';
+  try {
+    let cleanUrl = url.replace(/^https?:\/\//, '').replace(/\/$/, '');
+    if (cleanUrl.length > 30) { 
+        const parts = cleanUrl.split('/');
+        if (parts.length > 1 && parts[0].length < 25) { 
+            cleanUrl = parts[0] + "/...";
+        } else {
+             cleanUrl = cleanUrl.substring(0, 27) + "...";
+        }
+    }
+    return cleanUrl;
+  } catch (e) {
+    return url; 
+  }
+};
+
+const renderPromotionWithLinks = (promotionText: string) => {
+  const linkRegex = /\[([^\]]+)\]\((https?:\/\/[^\)]+)\)/g;
+  let lastIndex = 0;
+  const parts: (string | JSX.Element)[] = [];
+  let match;
+
+  while ((match = linkRegex.exec(promotionText)) !== null) {
+    if (match.index > lastIndex) {
+      parts.push(promotionText.substring(lastIndex, match.index));
+    }
+    const displayText = match[1];
+    const url = match[2];
+    parts.push(
+      <a
+        key={url + match.index}
+        href={url}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="text-primary hover:underline"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {displayText}
+      </a>
+    );
+    lastIndex = linkRegex.lastIndex;
+  }
+
+  if (lastIndex < promotionText.length) {
+    parts.push(promotionText.substring(lastIndex));
+  }
+
+  return <>{parts}</>;
+};
+
+
 export default function BusinessCard({ business, onSelect, isSelected }: BusinessCardProps) {
-  const gbpUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(business.name || '')}&query_place_id=${business.id}`;
+  const gbpUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(business.name)}&query_place_id=${business.id}`;
+
+  const handleCardClick = () => {
+    if (onSelect) {
+      onSelect(business.id);
+    }
+  };
+
+  const websiteUrl = business.website 
+    ? business.website.startsWith('http') ? business.website : `https://${business.website}`
+    : null;
+
+  const lastReviewTime = 
+    business.reviewSummary?.mostRecentReview?.relativePublishTimeDescription || 
+    (business.reviewSummary?.mostRecentReview?.publishTime 
+      ? new Date(business.reviewSummary.mostRecentReview.publishTime).toLocaleDateString() 
+      : null);
+  const reviewSummaryText = getLocalizedTextString(business.reviewSummary?.text);
 
   return (
     <Card 
       className={cn(
-        "flex flex-col h-full shadow-md hover:shadow-lg transition-all duration-200",
+        "flex flex-col h-full shadow-md hover:shadow-lg transition-shadow duration-200",
         onSelect && "cursor-pointer",
-        isSelected && "ring-2 ring-primary shadow-xl scale-[1.01]"
+        isSelected && "ring-2 ring-primary shadow-xl"
       )}
-      onClick={() => onSelect?.(business.id)}
+      onClick={handleCardClick}
+      tabIndex={onSelect ? 0 : -1}
+      onKeyDown={(e) => {
+        if (onSelect && (e.key === 'Enter' || e.key === ' ')) {
+          handleCardClick();
+        }
+      }}
+      aria-pressed={isSelected}
+      aria-label={`Select business: ${business.name}`}
     >
-      <CardHeader className="pb-2 space-y-1">
-        <div className="flex justify-between items-start gap-2">
-          <CardTitle className="text-lg leading-tight truncate">
-            {business.name || "Unnamed Business"}
-          </CardTitle>
-          {business.research?.isResidential !== undefined && (
-            <Badge variant="outline" className="shrink-0">
-              {business.research.isResidential ? <Home className="h-3 w-3 mr-1" /> : <Briefcase className="h-3 w-3 mr-1" />}
-              {business.research.isResidential ? "Residential" : "Commercial"}
-            </Badge>
-          )}
-        </div>
-        <p className="text-xs text-muted-foreground truncate">{business.address}</p>
+      <CardHeader className="pb-2">
+        <CardTitle className="text-xl">
+          <a
+            href={gbpUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-primary hover:underline flex items-center group"
+            onClick={(e) => e.stopPropagation()} 
+            aria-label={`View ${business.name} on Google Maps`}
+          >
+            <Building className="mr-2 h-5 w-5 text-primary/80 shrink-0" />
+            <span className="truncate">{business.name}</span>
+            <ExternalLink className="ml-1.5 h-4 w-4 text-primary/70 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+          </a>
+        </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4 pt-0">
-        <div className="flex items-center space-x-2">
-          {renderStars(business.rating)}
-          {business.reviewsCount !== undefined && (
-            <span className="text-xs text-muted-foreground">({business.reviewsCount} reviews)</span>
+      <CardContent className="flex-grow space-y-1.5 pt-2 text-sm">
+        {business.address && (
+          <p className="text-muted-foreground mb-2">{business.address}</p>
+        )}
+        
+        <div className="mb-1">
+          <span className="font-medium text-foreground">Phone: </span>
+          <span className="text-muted-foreground truncate">{business.phoneNumber || 'Not Available'}</span>
+        </div>
+
+        <div className="mb-2 flex items-center">
+          <span className="font-medium text-foreground mr-1">Website: </span>
+          {websiteUrl && business.website && business.website !== 'Not Available' ? (
+            <a 
+              href={websiteUrl} 
+              target="_blank" 
+              rel="noopener noreferrer" 
+              className="text-primary hover:underline truncate group inline-flex items-center"
+              onClick={(e) => e.stopPropagation()} 
+              aria-label={`Visit website for ${business.name}`}
+              title={business.website}
+            >
+              {business.website}
+              <ExternalLink className="ml-1 h-3.5 w-3.5 text-primary/70 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+            </a>
+          ) : (
+            <span className="text-muted-foreground">Not Available</span>
           )}
         </div>
 
-        {/* AI Research Grid */}
-        <div className="grid grid-cols-2 gap-3 p-3 bg-muted/30 rounded-lg border border-border/50">
-          <div className="space-y-1">
-            <p className="text-[10px] uppercase font-bold text-muted-foreground flex items-center">
-              <User className="h-3 w-3 mr-1" /> Owner/Exec
-            </p>
-            <p className="text-xs font-medium truncate">{business.research?.owner || 'Unknown'}</p>
-          </div>
-          <div className="space-y-1">
-            <p className="text-[10px] uppercase font-bold text-muted-foreground flex items-center">
-              <Users className="h-3 w-3 mr-1" /> Employees
-            </p>
-            <p className="text-xs font-medium">{business.research?.employeeCount || 'Unknown'}</p>
-          </div>
-          <div className="space-y-1">
-            <p className="text-[10px] uppercase font-bold text-muted-foreground flex items-center">
-              <DollarSign className="h-3 w-3 mr-1" /> Revenue
-            </p>
-            <p className="text-xs font-medium">{business.research?.revenue || 'Unknown'}</p>
-          </div>
-          <div className="space-y-1">
-            <p className="text-[10px] uppercase font-bold text-muted-foreground flex items-center">
-              <SearchCheck className="h-3 w-3 mr-1" /> Ads Status
-            </p>
-            <div className="text-xs flex items-center">
-              {business.adsInfo?.isRunningAds ? (
-                <span className="text-green-600 font-bold flex items-center"><SearchCheck className="h-3 w-3 mr-1" /> Active</span>
-              ) : business.adsInfo?.isRunningAds === false ? (
-                <span className="text-red-500 font-bold flex items-center"><SearchSlash className="h-3 w-3 mr-1" /> Inactive</span>
-              ) : (
-                <span className="text-muted-foreground">Unknown</span>
-              )}
-            </div>
-          </div>
+        <div className="flex items-center space-x-2 pt-1">
+          {renderStars(business.rating)}
+          {typeof business.reviewsCount === 'number' && (
+            <span className="text-muted-foreground">({business.reviewsCount} reviews)</span>
+          )}
         </div>
-
-        {/* Brands & Promos */}
-        {(business.research?.brands?.length || 0) > 0 && (
-          <div className="space-y-1">
-            <p className="text-[10px] uppercase font-bold text-muted-foreground flex items-center">
-              <Tag className="h-3 w-3 mr-1" /> Brands
-            </p>
-            <div className="flex flex-wrap gap-1">
-              {business.research?.brands?.slice(0, 4).map((brand, i) => (
-                <Badge key={i} variant="secondary" className="text-[10px] py-0">{brand}</Badge>
-              ))}
-            </div>
+        
+        {lastReviewTime && (
+          <div className="text-xs text-muted-foreground mt-1 flex items-center">
+            <Clock className="mr-1 h-3 w-3" />
+            <span>Last review: {lastReviewTime}</span>
           </div>
         )}
 
-        {/* Action Bar */}
-        <div className="flex items-center justify-between pt-2 border-t border-border/50">
-          <a href={gbpUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline flex items-center font-medium">
-            Google Maps <ExternalLink className="ml-1 h-3 w-3" />
-          </a>
-          {business.website && (
-            <a href={business.website} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline flex items-center font-medium">
-              Website <ExternalLink className="ml-1 h-3 w-3" />
-            </a>
-          )}
-        </div>
+        {reviewSummaryText && (
+            <p className="mt-2 text-xs text-muted-foreground italic">
+              &quot;{reviewSummaryText}&quot;
+            </p>
+        )}
+
+        {business.adsInfo && (
+          <div className="mt-2 pt-2 border-t border-border/50">
+            <p className="text-xs font-medium text-foreground mb-0.5">
+              Google Ads:
+            </p>
+            {business.adsInfo.error ? (
+              <div className="flex items-center text-xs text-destructive">
+                <SearchSlash className="mr-1.5 h-3.5 w-3.5" />
+                <span>
+                  Status: {business.adsInfo.error}
+                </span>
+              </div>
+            ) : business.adsInfo.isRunningAds === true ? (
+               <div className="flex items-center text-xs text-green-600 dark:text-green-500">
+                 <SearchCheck className="mr-1.5 h-3.5 w-3.5" />
+                {business.adsInfo.adsTransparencyLink ? (
+                  <a
+                    href={business.adsInfo.adsTransparencyLink}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="hover:underline group inline-flex items-center"
+                    onClick={(e) => e.stopPropagation()}
+                    aria-label={`View ads for ${business.name} on Google Ads Transparency Center`}
+                  >
+                    <span>
+                      Running ({business.adsInfo.adCount > 0 ? `${business.adsInfo.adCount} ads found` : 'Detected'})
+                    </span>
+                    <ExternalLink className="ml-1 h-3 w-3 opacity-70 group-hover:opacity-100 transition-opacity shrink-0" />
+                  </a>
+                ) : (
+                  <span>
+                    Running ({business.adsInfo.adCount > 0 ? `${business.adsInfo.adCount} ads found` : 'Detected'})
+                  </span>
+                )}
+              </div>
+            ) : business.adsInfo.isRunningAds === false ? (
+              <div className="flex items-center text-xs text-amber-600 dark:text-amber-500">
+                <SearchSlash className="mr-1.5 h-3.5 w-3.5" />
+                <span>
+                  Not detected {business.adsInfo.adCount > 0 ? `(${business.adsInfo.adCount} ads from other domains found for advertiser)` : ''}
+                </span>
+              </div>
+            ) : (
+               <div className="flex items-center text-xs text-muted-foreground">
+                 <SearchSlash className="mr-1.5 h-3.5 w-3.5" />
+                <span>Status undetermined</span>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Call Outs Scan Details (Focused Scan) */}
+        {business.promotionsScan && (
+          <div className="mt-3 pt-3 border-t border-border/50 space-y-1.5">
+            <h4 className="text-xs font-semibold text-muted-foreground flex items-center">
+              <Percent className="mr-1.5 h-3.5 w-3.5" />
+              Current Call Outs
+            </h4>
+            <p className="text-xs">
+              <span className="font-medium text-foreground">Verified: </span>
+              <span className="text-muted-foreground">{new Date(business.promotionsScan.dataVerificationDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</span>
+            </p>
+            {business.promotionsScan.promotions.length > 0 ? (
+              <div>
+                <p className="text-xs font-medium text-foreground mt-1">Active Call Outs:</p>
+                <ul className="list-disc list-inside text-xs text-muted-foreground pl-2 space-y-0.5">
+                  {business.promotionsScan.promotions.map((promo, index) => (
+                    <li key={`promo-${index}`}>{renderPromotionWithLinks(promo)}</li>
+                  ))}
+                </ul>
+              </div>
+            ) : business.promotionsScan.websiteStatus === 'Successfully crawled' ? (
+              <p className="text-xs text-muted-foreground">No call outs found</p>
+            ) : (
+              <p className="text-xs text-amber-600 dark:text-amber-500">
+                {formatPromotionError(business.promotionsScan.websiteStatus)}
+              </p>
+            )}
+          </div>
+        )}
+
       </CardContent>
     </Card>
   );
