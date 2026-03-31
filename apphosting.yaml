@@ -20,3 +20,43 @@ runConfig:
 
   # Maximum concurrent requests per instance
   concurrency: 80
+
+env:
+  # --- Server-side secrets (injected at runtime from Google Cloud Secret Manager) ---
+  - variable: GOOGLE_PLACES_API_KEY
+    secret: GOOGLE_PLACES_API_KEY
+
+  - variable: OPENAI_API_KEY
+    secret: OPENAI_API_KEY
+
+  - variable: SEARCHAPI_IO_API_KEY
+    secret: SEARCHAPI_IO_API_KEY
+
+  - variable: FIRECRAWL_API_KEY
+    secret: FIRECRAWL_API_KEY
+
+  - variable: TAVILY_API_KEY
+    secret: TAVILY_API_KEY
+
+  - variable: APP_ACCESS_PASSWORD
+    secret: APP_ACCESS_PASSWORD
+
+  - variable: GOOGLE_SERVICE_ACCOUNT_EMAIL
+    secret: GOOGLE_SERVICE_ACCOUNT_EMAIL
+
+  - variable: GOOGLE_PRIVATE_KEY
+    secret: GOOGLE_PRIVATE_KEY
+
+  - variable: GOOGLE_DRIVE_FOLDER_ID
+    secret: GOOGLE_DRIVE_FOLDER_ID
+
+  # --- Client-side secrets (needed at build time for Next.js client bundle) ---
+  - variable: NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
+    secret: NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
+    availability:
+      - BUILD
+      - RUNTIME
+
+  # --- Non-secret config (plain values, not from Secret Manager) ---
+  - variable: NEXT_PUBLIC_SEARCH_CHUNK_SIZE
+    value: "6"
