@@ -705,6 +705,14 @@ function MarketAnalyzerContent() {
                           <Loader2 className="h-5 w-5 animate-spin mr-2" />
                           <span>Searching for businesses...</span>
                         </div>
+                      ) : !isProcessing ? (
+                        <div className="text-center py-10">
+                          <MapPinned className="mx-auto h-12 w-12 text-muted-foreground mb-3" />
+                          <p className="text-lg font-semibold text-foreground">No Businesses Found</p>
+                          <p className="text-sm text-muted-foreground mt-1">
+                            No requested businesses were found in this area. Try adjusting your search terms or widening your radius.
+                          </p>
+                        </div>
                       ) : null}
 
                       {/* Comparison Table - show when comparison data is loaded */}
